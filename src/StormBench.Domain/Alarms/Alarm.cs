@@ -57,7 +57,7 @@ public sealed record Alarm(
         (AlarmState.ReturnedUnacknowledged, true) => AlarmState.Unacknowledged,
         (AlarmState.Unacknowledged, false) => AlarmState.ReturnedUnacknowledged,
         (AlarmState.Acknowledged, false) => AlarmState.Normal,
-        _ => state,
+        _ => state
     };
 
     /// <summary>The state after the operator acknowledged; unchanged when there is nothing to acknowledge.</summary>
@@ -65,7 +65,7 @@ public sealed record Alarm(
     {
         AlarmState.Unacknowledged => AlarmState.Acknowledged,
         AlarmState.ReturnedUnacknowledged => AlarmState.Normal,
-        _ => state,
+        _ => state
     };
 
     public static Alarm Raise(AlarmDefinition definition, DateTimeOffset now, DateTime? simTime) =>

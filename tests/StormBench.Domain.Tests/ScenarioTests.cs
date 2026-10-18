@@ -11,7 +11,7 @@ public class ScenarioTests
         [
             new ControlAlgorithm(new AlgorithmId("efd-plc"), "EFD in the PLC", "d", ControlMode.EfdPublished, null),
             new ControlAlgorithm(new AlgorithmId("efd-center"), "EFD from the center", "d", ControlMode.EfdCenter, ControlCenter.Scada),
-            new ControlAlgorithm(new AlgorithmId("mpc-center"), "MPC, simulator as center", "d", ControlMode.EfdCenter, ControlCenter.Simulator),
+            new ControlAlgorithm(new AlgorithmId("mpc-center"), "MPC, simulator as center", "d", ControlMode.EfdCenter, ControlCenter.Simulator)
         ],
         [0.1],
         new StormId("2000-05-30"),

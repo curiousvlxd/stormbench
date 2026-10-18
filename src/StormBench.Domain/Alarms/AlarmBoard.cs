@@ -31,7 +31,7 @@ public sealed class AlarmBoard
             {
                 AlarmState.Unacknowledged => Alarm.Raise(definition, now, simTime),
                 AlarmState.ReturnedUnacknowledged => current! with { State = next, ReturnedAt = now },
-                _ => null,
+                _ => null
             });
             transitions.Add(new AlarmTransition(definition, state, next, now, simTime));
         }
@@ -63,7 +63,7 @@ public sealed class AlarmBoard
         .. _alarms.Values
             .OrderBy(a => a.Definition.Priority)
             .ThenByDescending(a => a.ActivatedAt)
-            .ThenBy(a => a.Definition.Id, StringComparer.Ordinal),
+            .ThenBy(a => a.Definition.Id, StringComparer.Ordinal)
     ];
 
     private void Set(string id, Alarm? alarm)

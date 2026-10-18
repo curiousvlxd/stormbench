@@ -101,7 +101,7 @@ public sealed record RunSummary(
             BaseCase = reference,
             ChangePercent = Change(total, reference),
             WwtpInflow = wwtpInflow ?? WwtpInflow,
-            Mismatches = mismatches ?? Mismatches,
+            Mismatches = mismatches ?? Mismatches
         };
     }
 
@@ -113,7 +113,7 @@ public sealed record RunSummary(
         ScenarioState.Finished => RunState.Finished,
         ScenarioState.Stopped => RunState.Stopped,
         ScenarioState.Failed => RunState.Failed,
-        _ => null,
+        _ => null
     };
 
     /// <summary>
