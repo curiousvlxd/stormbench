@@ -1,0 +1,16 @@
+<script type="module" src="@Assets["Hmi/Layout/ReconnectModal.razor.js"]"></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet>
+    <div class="reconnect">
+        <p class="reconnect-title">Display disconnected from Scada</p>
+        <p class="components-reconnect-first-attempt-visible">Reconnecting. The values on screen are frozen.</p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            Reconnect failed, next attempt in <span id="components-seconds-to-next-attempt"></span> s.
+        </p>
+        <p class="components-reconnect-failed-visible">Could not reconnect. Retry or reload the page.</p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible">Retry</button>
+        <p class="components-pause-visible">The server paused this display.</p>
+        <p class="components-resume-failed-visible">Could not resume. Retry or reload the page.</p>
+        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible">Resume</button>
+    </div>
+</dialog>

@@ -1,0 +1,10 @@
+<g class="alarm-indicator @AlarmCss.Classes(Alarm.Definition.Priority, Alarm)" transform="translate(@Svg.N(X) @Svg.N(Y))">
+    <title>Priority @((int)Alarm.Definition.Priority): @Alarm.Definition.Message (@AlarmCss.StateText(Alarm.State))</title>
+    <AlarmShape Priority="Alarm.Definition.Priority" />
+</g>
+
+@code {
+    [Parameter, EditorRequired] public Alarm Alarm { get; set; } = default!;
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+}

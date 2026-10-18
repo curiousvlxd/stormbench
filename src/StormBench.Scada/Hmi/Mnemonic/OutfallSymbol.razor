@@ -1,0 +1,16 @@
+@{
+    var x0 = Shape.Center.X - (Shape.Width / 2);
+    var y0 = Shape.Center.Y - (Shape.Height / 2);
+}
+<g class="@(Stale ? "outfall stale" : "outfall")">
+    <title>Treatment plant: @Fmt.Volume(Inflow) received in this storm</title>
+    <rect class="outfall-body" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(Shape.Width)" height="@Svg.N(Shape.Height)" rx="20" />
+    <text class="tag small" x="@Svg.N(Shape.Center.X)" y="@Svg.N(Shape.Center.Y + 55)" text-anchor="middle">WWTP</text>
+    <text class="value-sub" x="@Svg.N(Shape.Center.X)" y="@Svg.N(y0 + Shape.Height + 190)" text-anchor="middle">@Fmt.Volume(Inflow)</text>
+</g>
+
+@code {
+    [Parameter, EditorRequired] public OutfallShape Shape { get; set; } = default!;
+    [Parameter] public double? Inflow { get; set; }
+    [Parameter] public bool Stale { get; set; }
+}

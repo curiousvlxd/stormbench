@@ -1,0 +1,159 @@
+@page "/operator"
+@implements IAsyncDisposable
+@inject HmiFeed Feed
+@inject AcknowledgeAlarmHandler Acknowledgement
+@inject IJSRuntime JS
+@inject ILogger<Overview> Logger
+
+<PageTitle>@Title</PageTitle>
+
+<div class="hmi">
+    <StatusBar View="_view" Theme="@_theme" OnToggleTheme="ToggleThemeAsync" />
+    <AlarmBanner Alarms="_view.Alarms" OnAcknowledgeAll="AcknowledgeAll" />
+
+    <main class="hmi-main">
+        <div class="main-col">
+        <section class="panel overview" aria-labelledby="overview-title">
+            <header class="panel-head">
+                <h2 id="overview-title">Drainage network</h2>
+                <dl class="facts">
+                    <div><dt>Control</dt><dd>@Fmt.Mode(_view.ModeActive, _view.Algorithm)</dd></div>
+                    @if (CenterLink is { } link)
+                    {
+                        <div class="@(link.Abnormal ? "fact-abnormal" : null)"><dt>Center link</dt><dd>@link.Text</dd></div>
+                    }
+                    <div><dt>Rain</dt><dd>@Fmt.Rain(_view.Rain)</dd></div>
+                    <div><dt>Storm</dt><dd>@(_view.Storm?.Label ?? Fmt.NoValue)</dd></div>
+                </dl>
+            </header>
+            @if (_view.Diagram is { } diagram)
+            {
+                <div class="mnemonic-wrap">
+                    <NetworkDiagram Diagram="diagram" MaxDepth="@(_view.Site.Network?.TankDepth ?? 5.0)"
+                                    ShowProposals="@(_view.ModeActive is ControlMode.EfdCenter)" />
+                </div>
+                <p class="diagram-note">
+                    Tank levels and valve openings come from the PLC, overflows and rain from the simulated field.
+                    The tick on each tank marks the 1 m EFD threshold.
+                </p>
+            }
+            else
+            {
+                <p class="muted diagram-empty">The network appears when the simulator (Sim01) publishes its model.</p>
+            }
+        </section>
+        <TrendChart Trend="_view.Trend" Storm="_view.Storm" />
+        </div>
+
+        <aside class="side">
+            <ScenarioPanel Status="_view.Scenario" Network="_view.Site.Network" />
+            <KpiTiles Kpi="_view.Kpi" Status="_view.Scenario" />
+        </aside>
+
+        <AlarmList Alarms="_view.Alarms" OnAcknowledge="Acknowledge" />
+    </main>
+</div>
+
+@code {
+    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromMilliseconds(100);
+    private readonly CancellationTokenSource _stop = new();
+    private HmiView _view = default!;
+    private FeedVersion _version;
+    private string _theme = "light";
+
+    /// <summary>Only meaningful while the PLC is asked to take the center's proposals (mode 3).</summary>
+    private (string Text, bool Abnormal)? CenterLink
+    {
+        get
+        {
+            if (!_view.CenterAsked)
+            {
+                return null;
+            }
+            return _view.Scenario.CenterLinkCut ? ("cut, PLC runs locally", true)
+                : _view.Scenario.CenterLinkUp == false ? ("lost, PLC runs locally", true)
+                : _view.PlcFallback ? ("PLC runs locally", true)
+                : ("up", false);
+        }
+    }
+
+    private string Title
+    {
+        get
+        {
+            var unacknowledged = _view.Alarms.Count(a => a.NeedsAcknowledge);
+            return unacknowledged > 0 ? $"({unacknowledged}) Astlingen operator, StormBench" : "Astlingen operator, StormBench";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _version = Feed.Version;
+        _view = Feed.Build();
+        if (RendererInfo.IsInteractive)
+        {
+            _ = RefreshAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RendererInfo.IsInteractive)
+        {
+            _theme = await JS.InvokeAsync<string>("hmiTheme.current");
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Rebuild the view only when a module reports a change; at most ten times a second.</summary>
+    private async Task RefreshAsync()
+    {
+        using var timer = new PeriodicTimer(RefreshPeriod);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_stop.Token))
+            {
+                var version = Feed.Version;
+                if (version == _version)
+                {
+                    continue;
+                }
+                _version = version;
+                try
+                {
+                    _view = Feed.Build();
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or KeyNotFoundException)
+                {
+                    Logger.BuildFailed(ex);
+                    continue;
+                }
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void Acknowledge(string id)
+    {
+        Acknowledgement.Handle(new AcknowledgeAlarm(id));
+        _view = Feed.Build();
+    }
+
+    private void AcknowledgeAll()
+    {
+        Acknowledgement.HandleAll();
+        _view = Feed.Build();
+    }
+
+    private async Task ToggleThemeAsync() =>
+        _theme = await JS.InvokeAsync<string>("hmiTheme.toggle");
+
+    public async ValueTask DisposeAsync()
+    {
+        await _stop.CancelAsync();
+        _stop.Dispose();
+    }
+}

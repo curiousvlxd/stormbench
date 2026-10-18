@@ -1,0 +1,39 @@
+@{
+    var unacknowledged = Alarms.Count(a => a.NeedsAcknowledge);
+    var top = Alarms.FirstOrDefault(a => a.NeedsAcknowledge) ?? Alarms.FirstOrDefault();
+}
+<section class="@(unacknowledged > 0 ? "alarm-banner attention" : "alarm-banner")" aria-label="Alarm banner">
+    @if (top is null)
+    {
+        <span class="banner-quiet">No alarms</span>
+    }
+    else
+    {
+        <div class="banner-counts">
+            @foreach (var priority in Enum.GetValues<AlarmPriority>())
+            {
+                var count = Alarms.Count(a => a.Definition.Priority == priority);
+                if (count > 0)
+                {
+                    <span class="banner-count" title="@count alarm(s) of priority @((int)priority)">
+                        <AlarmBadge Priority="priority" />@count
+                    </span>
+                }
+            }
+        </div>
+        <div class="banner-top">
+            <AlarmBadge Priority="top.Definition.Priority" Alarm="top" />
+            <span class="banner-source">@top.Definition.Source</span>
+            <span class="banner-message">@top.Definition.Message</span>
+            <span class="banner-time">@(top.SimTime is { } t ? Fmt.Time(t) : Fmt.WallTime(top.ActivatedAt))</span>
+        </div>
+        <Button Id="ack-all" Variant="ButtonVariant.secondary" Icon="checkboxes" Disabled="@(unacknowledged == 0)" ClickEvent="OnAcknowledgeAll">
+            @(unacknowledged > 0 ? $"Acknowledge all ({unacknowledged})" : "Acknowledge all")
+        </Button>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Alarm> Alarms { get; set; } = [];
+    [Parameter] public EventCallback OnAcknowledgeAll { get; set; }
+}

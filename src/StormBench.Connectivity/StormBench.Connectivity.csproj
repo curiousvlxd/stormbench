@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-StormBench.Connectivity-164ab298-ad2c-451f-8954-6b251197c24f</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentModbus" Version="5.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.5.378.176" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Configuration" Version="1.5.378.176" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StormBench.Contracts\StormBench.Contracts.csproj" />
+    <ProjectReference Include="..\StormBench.ServiceDefaults\StormBench.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\StormBench.Sparkplug\StormBench.Sparkplug.csproj" />
+  </ItemGroup>
+</Project>

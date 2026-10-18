@@ -1,0 +1,35 @@
+@{
+    var algorithm = Status.Catalog?.Algorithm(Status.Algorithm)?.Label;
+    var storm = Status.Catalog?.Storm(Status.Storm)?.Label;
+}
+<div class="run-state" aria-live="polite">
+    @switch (Status.State)
+    {
+        case ScenarioState.Preparing:
+            <p class="run-line"><strong>Preparing.</strong> Computing the Base Case of @storm as the reference.</p>
+            <div class="progress indeterminate" aria-hidden="true"><span></span></div>
+            break;
+        case ScenarioState.Running:
+            <p class="run-line"><strong>Running</strong> @storm with @algorithm: step @Fmt.Count(Status.Step) of @Fmt.Count(Status.Steps)</p>
+            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@((int)(Status.Progress * 100))">
+                <span style="width: @Svg.N(Status.Progress * 100)%"></span>
+            </div>
+            break;
+        case ScenarioState.Finished:
+            <p class="run-line"><strong>Finished</strong> @storm with @algorithm, @Fmt.Count(Status.Step) steps.</p>
+            break;
+        case ScenarioState.Stopped:
+            <p class="run-line"><strong>Stopped</strong> @storm at step @Fmt.Count(Status.Step) of @Fmt.Count(Status.Steps).</p>
+            break;
+        case ScenarioState.Failed:
+            <p class="run-line"><strong>Failed.</strong> @storm with @algorithm did not complete.</p>
+            break;
+        default:
+            <p class="run-line muted">@(Status.Simulator is Presence.Online ? "Idle. Choose a storm and start it." : "No simulator connected.")</p>
+            break;
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ScenarioStatus Status { get; set; } = default!;
+}

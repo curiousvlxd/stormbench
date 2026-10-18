@@ -1,0 +1,219 @@
+@inject StartStormHandler Start
+@inject StopStormHandler Stop
+@inject SetCenterLinkHandler CenterLink
+@inject JamGateHandler Jam
+@inject FreezeSensorHandler Freeze
+
+<section class="panel console" aria-labelledby="console-title">
+    <header class="panel-head">
+        <h2 id="console-title">Test console</h2>
+        <span class="panel-note">Runs the simulated storm, not the plant</span>
+    </header>
+
+    @if (Status.Catalog is not { } catalog)
+    {
+        <p class="muted">@(Status.Simulator is Presence.Online ? "Waiting for the simulator's catalog." : "Simulator offline. Start it to run storms.")</p>
+    }
+    else
+    {
+        var storm = catalog.Storm(Status.Busy ? Status.Storm : _storm) ?? catalog.Storms[0];
+        var algorithm = catalog.Algorithm(Algorithm(catalog)) ?? catalog.Algorithms[0];
+        var locked = Status.Busy || _pending;
+        <div class="field">
+            <Select Id="console-storm" Label="Storm" Value="@storm.Id.Value" Disabled="locked" ValueChangeEvent="OnStormChanged">
+                @foreach (var option in catalog.Storms)
+                {
+                    <SelectItem Id="@($"storm-{option.Id}")" Label="@option.Label" Value="@option.Id.Value" />
+                }
+            </Select>
+            <p class="hint">@storm.Description. @Fmt.Count(storm.Steps) steps of 5 min.</p>
+        </div>
+
+        <div class="field">
+            <RadioGroup Id="console-algorithm" Label="Control" Value="@algorithm.Id.Value" Direction="RadioGroupDirection.Column" ValueChangeEvent="OnAlgorithmChanged">
+                @foreach (var option in catalog.Algorithms)
+                {
+                    <SiemensIXBlazor.Components.Radio.Radio Id="@($"algorithm-{option.Id}")" Name="console-algorithm" Label="@option.Label" Value="@option.Id.Value"
+                                                             Checked="@(option.Id == algorithm.Id)" Disabled="locked" />
+                }
+            </RadioGroup>
+            <p class="hint">@algorithm.Description.</p>
+        </div>
+
+        <div class="field">
+            <span class="field-label" id="console-speed">Speed, control steps per second</span>
+            <div class="speed-row" role="group" aria-labelledby="console-speed">
+                @foreach (var pace in catalog.Paces)
+                {
+                    var selected = Math.Abs(pace - Pace(catalog)) < 1e-9;
+                    var value = pace;
+                    <ToggleButton Id="@($"pace-{Fmt.Pace(pace).Replace('/', '-')}")" Pressed="selected" Disabled="locked"
+                                  Variant="ToggleButtonVariant.subtle_secondary" PressedChangeEvent="_ => _pace = value">
+                        @Fmt.Pace(pace)
+                    </ToggleButton>
+                }
+            </div>
+            <p class="hint">@Fmt.PaceHint(Pace(catalog), 300).</p>
+        </div>
+
+        <div class="actions">
+            <Button Id="console-start" Variant="ButtonVariant.primary" Icon="play" Disabled="@(!Status.CanStart || _pending)" ClickEvent="() => StartAsync(catalog)">Start storm</Button>
+            <Button Id="console-stop" Variant="ButtonVariant.secondary" Icon="stop" Disabled="@(!Status.CanStop || _pending)" ClickEvent="StopAsync">Stop</Button>
+        </div>
+    }
+
+    <RunState Status="Status" />
+
+    <div class="faults">
+        <h3 class="field-label">Faults</h3>
+        <div class="field">
+            <Button Id="fault-center-link" Variant="@(Status.CenterLinkCut ? ButtonVariant.danger_primary : ButtonVariant.secondary)"
+                    Disabled="@(!Status.CanInjectFaults || _faultPending)" ClickEvent="ToggleCenterLinkAsync">
+                @(Status.CenterLinkCut ? "Restore link to center" : "Cut link to center")
+            </Button>
+            <p class="hint">
+                @(Status.CenterLinkCut
+                    ? "Link cut: with proposals from the center the PLC stations run locally."
+                    : "With proposals from the center, the PLC falls back to local control when the center stays silent for 2 s.")
+            </p>
+        </div>
+        @if (Network is { } network)
+        {
+            <div class="field fault-pair">
+                <Select Id="fault-stuck-gate" Label="Stuck gate" Value="@(Status.StuckGate?.Value ?? NoFault)" Disabled="@(!Status.CanInjectFaults || _faultPending)"
+                        ValueChangeEvent="OnStuckGateChanged">
+                    <SelectItem Id="gate-none" Label="None" Value="@NoFault" />
+                    @foreach (var station in network.Stations)
+                    {
+                        <SelectItem Id="@($"gate-{station.Gate}")" Label="@($"{station.Gate} (tank {station.Tank})")" Value="@station.Gate.Value" />
+                    }
+                </Select>
+                <Select Id="fault-frozen-sensor" Label="Frozen level sensor" Value="@(Status.FrozenSensor?.Value ?? NoFault)" Disabled="@(!Status.CanInjectFaults || _faultPending)"
+                        ValueChangeEvent="OnFrozenSensorChanged">
+                    <SelectItem Id="sensor-none" Label="None" Value="@NoFault" />
+                    @foreach (var tank in network.Tanks)
+                    {
+                        <SelectItem Id="@($"sensor-{tank}")" Label="@tank.Value" Value="@tank.Value" />
+                    }
+                </Select>
+            </div>
+            <p class="hint">A stuck gate ignores the PLC; a frozen sensor feeds it an old level. Scada notices both from position feedback and a level that stops moving.</p>
+        }
+    </div>
+
+    @if (_refusal is not null)
+    {
+        <p class="notice" role="status">@_refusal</p>
+    }
+    else if (Status.Message is { } message && !Status.Busy)
+    {
+        <p class="notice" role="status">@message</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ScenarioStatus Status { get; set; } = default!;
+
+    /// <summary>The network, for the fault targets (outlets and tanks).</summary>
+    [Parameter] public DrainageNetwork? Network { get; set; }
+
+    private const string NoFault = "none";
+
+    private StormId? _storm;
+    private AlgorithmId? _algorithm;
+    private double? _pace;
+    private bool _pending;
+    private bool _faultPending;
+    private string? _refusal;
+    private long _pendingRun;
+    private DateTime _pendingAt;
+
+    /// <summary>How long the console waits for the simulator to take up a start command.</summary>
+    private static readonly TimeSpan PendingTimeout = TimeSpan.FromSeconds(3);
+
+    /// <summary>While a storm runs the console shows its settings, otherwise the operator's choice.</summary>
+    private AlgorithmId Algorithm(ScenarioCatalog catalog) =>
+        (Status.Busy ? Status.Algorithm : null) ?? _algorithm ?? Status.Algorithm ?? catalog.DefaultAlgorithm;
+
+    private double Pace(ScenarioCatalog catalog) => (Status.Busy ? Status.Pace : null) ?? _pace ?? catalog.DefaultPace;
+
+    protected override void OnParametersSet()
+    {
+        if (Status.Catalog is { } catalog)
+        {
+            _storm ??= Status.Storm ?? catalog.DefaultStorm;
+        }
+        if (_pending && (Status.Run != _pendingRun || Status.Busy || DateTime.UtcNow - _pendingAt > PendingTimeout))
+        {
+            _pending = false;
+        }
+    }
+
+    private void OnStormChanged(object? value) => _storm = Single(value) is { } storm ? new StormId(storm) : _storm;
+
+    private void OnAlgorithmChanged(string value) => _algorithm = new AlgorithmId(value);
+
+    private Task OnStuckGateChanged(object? value) =>
+        RunFaultCommandAsync(() => Jam.HandleAsync(new JamGate(Target(value) is { } gate ? new GateId(gate) : null), CancellationToken.None));
+
+    private Task OnFrozenSensorChanged(object? value) =>
+        RunFaultCommandAsync(() => Freeze.HandleAsync(new FreezeSensor(Target(value) is { } tank ? new TankId(tank) : null), CancellationToken.None));
+
+    /// <summary>The fault target picked, or null for none.</summary>
+    private static string? Target(object? value) => Single(value) is { Length: > 0 } target and not NoFault ? target : null;
+
+    /// <summary>iX select reports a string, or a string array in multiple mode.</summary>
+    private static string? Single(object? value) => value switch
+    {
+        string s => s,
+        string[] { Length: > 0 } a => a[0],
+        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e => e.GetString(),
+        _ => value?.ToString(),
+    };
+
+    private async Task StartAsync(ScenarioCatalog catalog)
+    {
+        _refusal = null;
+        _pending = true;
+        _pendingRun = Status.Run;
+        _pendingAt = DateTime.UtcNow;
+        var storm = catalog.Storm(_storm) ?? catalog.Storms[0];
+        var result = await Start.HandleAsync(new StartStorm(storm.Id, Algorithm(catalog), Pace(catalog)), CancellationToken.None);
+        if (!result.Accepted)
+        {
+            _pending = false;
+            _refusal = result.Reason;
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        _refusal = null;
+        var result = await Stop.HandleAsync(CancellationToken.None);
+        if (!result.Accepted)
+        {
+            _refusal = result.Reason;
+        }
+    }
+
+    private Task ToggleCenterLinkAsync() =>
+        RunFaultCommandAsync(() => CenterLink.HandleAsync(new SetCenterLink(!Status.CenterLinkCut), CancellationToken.None));
+
+    private async Task RunFaultCommandAsync(Func<Task<CommandResult>> command)
+    {
+        _refusal = null;
+        _faultPending = true;
+        try
+        {
+            var result = await command();
+            if (!result.Accepted)
+            {
+                _refusal = result.Reason;
+            }
+        }
+        finally
+        {
+            _faultPending = false;
+        }
+    }
+}

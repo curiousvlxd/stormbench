@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Domain model of the testbed: the drainage network, control, storms and runs, ISA-18.2 alarms. No dependencies.</Description>
+  </PropertyGroup>
+
+</Project>

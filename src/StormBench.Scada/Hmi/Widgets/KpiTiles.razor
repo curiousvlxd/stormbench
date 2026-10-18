@@ -1,0 +1,61 @@
+<section class="kpis" aria-label="Key figures">
+    <article class="kpi primary @CompareClass">
+        <h3 class="kpi-label">Overflow in this storm</h3>
+        <p class="kpi-value">@(Status.Run == 0 ? Fmt.NoValue : Fmt.Volume(Kpi.Total))</p>
+        <p class="kpi-compare">
+            @switch (Kpi.Comparison)
+            {
+                case Comparison.Better:
+                    <span class="kpi-arrow" aria-hidden="true">▼</span>
+                    <span><strong>@Fmt.Percent(-(Kpi.Relative ?? 0)) less</strong> than the Base Case (@Fmt.Volume(Kpi.BaseCase))</span>
+                    break;
+                case Comparison.Worse when Kpi.Relative is { } relative:
+                    <span class="kpi-arrow" aria-hidden="true">▲</span>
+                    <span><strong>@Fmt.Percent(relative) more</strong> than the Base Case (@Fmt.Volume(Kpi.BaseCase))</span>
+                    break;
+                case Comparison.Worse:
+                    <span class="kpi-arrow" aria-hidden="true">▲</span>
+                    <span><strong>@Fmt.Volume(Kpi.Delta) more</strong>, the Base Case has no overflow</span>
+                    break;
+                case Comparison.Same:
+                    <span class="kpi-arrow" aria-hidden="true">=</span>
+                    <span>@(Kpi.BaseCase < OverflowKpi.NoOverflow ? "No overflow, like the Base Case" : $"Same as the Base Case ({Fmt.Volume(Kpi.BaseCase)})")</span>
+                    break;
+                default:
+                    <span>The Base Case reference appears when a storm runs</span>
+                    break;
+            }
+        </p>
+    </article>
+
+    <article class="kpi">
+        <h3 class="kpi-label">Overflowing now</h3>
+        <p class="kpi-value">@Kpi.Overflowing.Count <span class="kpi-unit">of @Kpi.Points</span></p>
+        <p class="kpi-sub">@(Kpi.Overflowing.Count == 0 ? "no point spills" : string.Join(", ", Kpi.Overflowing))</p>
+    </article>
+
+    <article class="kpi">
+        <h3 class="kpi-label">PLC against the reference</h3>
+        <p class="kpi-value">@(Status.Run == 0 ? Fmt.NoValue : Fmt.Count(Status.Mismatches)) <span class="kpi-unit">@(Status.Mismatches == 1 ? "difference" : "differences")</span></p>
+        <p class="kpi-sub">each step, bit for bit</p>
+    </article>
+
+    <article class="kpi wide">
+        <h3 class="kpi-label">To the treatment plant</h3>
+        <p class="kpi-value">@(Status.Run == 0 ? Fmt.NoValue : Fmt.Volume(Kpi.WwtpInflow))</p>
+        <p class="kpi-sub">treated instead of spilled into the river</p>
+    </article>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public OverflowKpi Kpi { get; set; } = default!;
+    [Parameter, EditorRequired] public ScenarioStatus Status { get; set; } = default!;
+
+    private string CompareClass => Kpi.Comparison switch
+    {
+        Comparison.Better => "better",
+        Comparison.Worse => "worse",
+        Comparison.Same => "same",
+        _ => "nodata",
+    };
+}

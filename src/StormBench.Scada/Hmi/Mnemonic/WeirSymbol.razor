@@ -1,0 +1,33 @@
+@{
+    var s = View.Shape;
+}
+<g class="@Css">
+    <title>@Tooltip</title>
+    <rect class="weir-body" x="@Svg.N(s.Center.X - 120)" y="@Svg.N(s.Center.Y - 120)" width="240" height="240" rx="16" />
+    <line class="weir-crest" x1="@Svg.N(s.Center.X - 120)" x2="@Svg.N(s.Center.X + 120)" y1="@Svg.N(s.Center.Y - 20)" y2="@Svg.N(s.Center.Y - 20)" />
+    @if (View.Overflowing)
+    {
+        <path class="spill" d="M @Svg.N(s.Center.X + 40) @Svg.N(s.Center.Y - 140) q 70 -150 250 -170" />
+        <path class="spill-head" d="M @Svg.N(s.Center.X + 300) @Svg.N(s.Center.Y - 315) l -120 -50 l 30 120 z" />
+    }
+    <text class="tag small" x="@Svg.N(s.Label.X)" y="@Svg.N(s.Label.Y)" text-anchor="@s.Label.Anchor">@s.Id</text>
+    @if (View.Volume is > 0.5)
+    {
+        <g><text class="value-sub" x="@Svg.N(s.Label.X)" y="@Svg.N(s.Label.Y + DiagramLayout.LineGap)" text-anchor="@s.Label.Anchor">@Fmt.Volume(View.Volume)</text></g>
+    }
+    @if (View.Alarm is { } alarm)
+    {
+        <AlarmIndicator Alarm="alarm" X="@s.Indicator.X" Y="@s.Indicator.Y" />
+    }
+</g>
+
+@code {
+    [Parameter, EditorRequired] public WeirView View { get; set; } = default!;
+
+    private string Css => "weir" + (View.Overflowing ? " overflowing" : "") + (View.Stale ? " stale" : "");
+
+    private string Tooltip =>
+        $"Overflow structure {View.Shape.Id}: {Fmt.Volume(View.Volume ?? 0)} spilled in this storm"
+        + (View.Overflowing ? ", overflowing now" : "")
+        + (View.Stale ? ", value stale" : "");
+}

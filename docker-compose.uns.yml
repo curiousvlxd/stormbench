@@ -1,0 +1,146 @@
+name: stormbench-uns
+
+x-simulator: &simulator
+  build:
+    context: .
+    dockerfile: simulator/Dockerfile
+  image: stormbench/simulator:dev
+  depends_on: [connectivity]
+  volumes:
+    - ./models/astlingen:/app/models/astlingen
+    - ./results:/app/results
+  entrypoint: ["sh", "-c"]
+
+x-observability: &observability
+  VictoriaMetrics__Url: http://victoriametrics:8428
+  VictoriaLogs__Url: http://victorialogs:9428
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.1.2-alpine@sha256:38c0da4f2ef84284d47b3b3eeea1cb3bdeabe81ee10caf0cd5c5ff61ee3ea408
+    volumes: ["./deploy/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro"]
+    ports: ["127.0.0.1:${MQTT_PORT:-31883}:1883"]   # watch the UNS with any MQTT client
+
+  plc:
+    build:
+      context: plc
+      args:
+        TASK_INTERVAL: T#1ms
+    image: stormbench/plc:dev
+    init: true
+    cap_add: [SYS_NICE, SYS_RESOURCE]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/502"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 5s
+
+  scada:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+      args:
+        PROJECT: StormBench.Scada
+    image: stormbench/scada:dev
+    environment:
+      Mqtt__Host: mosquitto
+      Mqtt__Port: "1883"
+      OTEL_SERVICE_NAME: scada
+      <<: *observability
+      ConnectionStrings__runs: Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD:-stormbench};Database=runs
+    ports: ["127.0.0.1:${SCADA_PORT:-18080}:8080"]   # the HMI; GET /api/uns, /api/scenarios, /api/alarms, /api/runs
+    depends_on: [mosquitto]   # not on the stores: Scada runs without them and catches up
+
+  connectivity:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+      args:
+        PROJECT: StormBench.Connectivity
+    image: stormbench/connectivity:dev
+    environment:
+      Mqtt__Host: mosquitto
+      Mqtt__Port: "1883"
+      Plc__Host: plc
+      Plc__Port: "502"
+      Plc__Driver: ${PLC_DRIVER:-Modbus}
+      Plc__OpcUaEndpoint: opc.tcp://plc:4840/openplc/opcua
+      OTEL_SERVICE_NAME: connectivity
+      <<: *observability
+    depends_on:
+      mosquitto: { condition: service_started }
+      scada: { condition: service_started }
+      plc: { condition: service_healthy }
+
+  simulator:
+    <<: *simulator
+    command:
+      - python /app/models/fetch_astlingen.py --dest /app/models/astlingen
+        && python -m stormbench_sim serve --mqtt-host mosquitto --mqtt-port 1883
+        --plc-host plc --plc-port 502 --plc-timeout 60
+
+  check:
+    <<: *simulator
+    profiles: [check]
+    environment:
+      STORM_START: ${STORM_START-2000-05-29T00:00}
+      STORM_END: ${STORM_END-2000-06-01T00:00}
+      RUN_NAME: ${RUN_NAME:-uns-center}
+    command:
+      - python /app/models/fetch_astlingen.py --dest /app/models/astlingen
+        && python -m stormbench_sim run "$$RUN_NAME" --control plc --mode efd-center --center uns
+        --plc-host plc --plc-port 502 --plc-timeout 60
+        $${STORM_START:+--start "$$STORM_START" --end "$$STORM_END"}
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.153.0@sha256:5eff7af5341e401471002f58d106d399e614a62f3d240f2dbc21901e49eed5dd
+    command: ["-retentionPeriod=100y", "-search.disableCache", "-opentelemetry.usePrometheusNaming"]
+    volumes: ["victoriametrics:/victoria-metrics-data"]
+    ports: ["127.0.0.1:${VICTORIAMETRICS_PORT:-38428}:8428"]   # /vmui
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.53.0@sha256:251121fa882af99b95ba0c230a4a2f412ea602d2698c64a96c58dc9842bb755d
+    volumes: ["victorialogs:/victoria-logs-data"]
+    ports: ["127.0.0.1:${VICTORIALOGS_PORT:-39428}:9428"]   # /select/vmui
+
+  postgres:
+    image: postgres:17.11-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stormbench}
+      POSTGRES_DB: runs
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    ports: ["127.0.0.1:${POSTGRES_PORT:-35432}:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "runs"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  grafana:
+    image: grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
+    environment:
+      VM_URL: http://victoriametrics:8428
+      PG_HOST: postgres:5432
+      PG_USER: postgres
+      PG_PASSWORD: ${POSTGRES_PASSWORD:-stormbench}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/algorithm-comparison.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./deploy/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./deploy/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["127.0.0.1:${GRAFANA_PORT:-33000}:3000"]   # Algorithm comparison
+    depends_on:
+      victoriametrics: { condition: service_started }
+      postgres: { condition: service_healthy }
+
+volumes:
+  victoriametrics:
+  victorialogs:
+  postgres:

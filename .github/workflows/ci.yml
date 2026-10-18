@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: simulator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install uv==0.11.6
+      - run: uv sync --frozen
+      - run: uv run ruff check stormbench_sim tests
+      - run: uv run ruff format --check stormbench_sim tests
+      - run: uv run pytest -m "not model and not plc"
+
+  reuse:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx run "reuse[charset-normalizer]==6.2.0" lint
+
+  plc-in-the-loop:
+    runs-on: ubuntu-24.04
+    needs: lint-and-unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/cache@v4
+        with:
+          path: models/astlingen
+          key: astlingen-e226b03
+      - run: python models/fetch_astlingen.py
+      - run: docker compose up --build --detach --wait plc
+      - run: pip install uv==0.11.6
+      - working-directory: simulator
+        run: uv sync --frozen
+      - working-directory: simulator
+        env:
+          PLC_HOST: localhost
+          PLC_PORT: "1502"
+        run: uv run pytest -m "model or plc"
+      - if: always()
+        run: docker compose logs plc | tail -50 && docker compose down
+
+  dotnet:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet build StormBench.slnx -c Release
+      - run: dotnet test StormBench.slnx -c Release --no-build
+
+  uns-in-the-loop:
+    runs-on: ubuntu-24.04
+    needs: [dotnet, plc-in-the-loop]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: models/astlingen
+          key: astlingen-e226b03
+      - run: python3 models/fetch_astlingen.py
+      - run: docker compose -f docker-compose.uns.yml --profile check up --build --exit-code-from check
+      - if: always()
+        run: docker compose -f docker-compose.uns.yml --profile check logs connectivity scada simulator | tail -120 && docker compose -f docker-compose.uns.yml --profile check down

@@ -1,0 +1,59 @@
+{
+  "paper": {
+    "bc_total_m3": 264731,
+    "efd_total_m3": 247788,
+    "efd_reduction_pct": 6.4
+  },
+  "runs": {
+    "bc": {
+      "report_total_m3": 264724.0,
+      "api_total_m3": 264750.8,
+      "wwtp_inflow_m3": 3737354.8,
+      "events": 283,
+      "spill_hours": 450.08,
+      "wall_s": 48.79
+    },
+    "efd-intended": {
+      "report_total_m3": 247537.0,
+      "api_total_m3": 247563.2,
+      "wwtp_inflow_m3": 3754766.9,
+      "events": 269,
+      "spill_hours": 477.67,
+      "wall_s": 50.69
+    },
+    "efd-plc": {
+      "report_total_m3": 247787.0,
+      "api_total_m3": 247814.2,
+      "wwtp_inflow_m3": 3755004.2,
+      "events": 244,
+      "spill_hours": 490.0,
+      "wall_s": 139.38
+    },
+    "efd-python": {
+      "report_total_m3": 247787.0,
+      "api_total_m3": 247814.2,
+      "wwtp_inflow_m3": 3755004.2,
+      "events": 244,
+      "spill_hours": 490.0,
+      "wall_s": 50.91
+    },
+    "efd-swmm": {
+      "report_total_m3": 247787.0,
+      "api_total_m3": 247814.2,
+      "wwtp_inflow_m3": 3755004.2,
+      "events": 244,
+      "spill_hours": 490.0,
+      "wall_s": 49.05
+    }
+  },
+  "plc_vs_python": {
+    "steps": 105406,
+    "same_time_axis": true,
+    "identical_setpoints": true,
+    "identical_depths": true,
+    "identical_status": true,
+    "max_volume_diff_m3": 0.0,
+    "total_volume_diff_m3": 0.0,
+    "shadow_mismatches": 0
+  }
+}

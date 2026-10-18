@@ -1,0 +1,30 @@
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    uid: victoriametrics
+    type: prometheus
+    access: proxy
+    url: ${VM_URL}
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      timeInterval: 10s
+
+  - name: Run store
+    uid: runstore
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: ${PG_HOST}
+    user: ${PG_USER}
+    editable: false
+    jsonData:
+      database: runs
+      sslmode: disable
+      postgresVersion: 1700
+      timescaledb: false
+      maxOpenConns: 5
+    secureJsonData:
+      password: ${PG_PASSWORD}

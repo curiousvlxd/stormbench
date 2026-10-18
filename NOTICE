@@ -1,0 +1,94 @@
+StormBench
+Copyright 2026 StormBench contributors
+
+Code is licensed under the Apache License 2.0 (LICENSE).
+Documentation, diagrams and published results are licensed under CC BY 4.0
+(LICENSES/CC-BY-4.0.txt). Fonts are licensed under the SIL Open Font License 1.1.
+
+-------------------------------------------------------------------------------
+Benchmark model (not redistributed, downloaded by models/fetch_astlingen.py)
+-------------------------------------------------------------------------------
+Astlingen RTC benchmark, SWMM implementation
+https://github.com/open-toolbox/SWMM-Astlingen (commit e226b03)
+Model developed by Congcong Sun (IRI, CSIC-UPC) under the supervision of
+Manfred Schütze (ifak), Morten Borup and Luca Vezzaro (DTU), as stated in the
+repository description, which asks users to quote and mention the authors
+when the model is used or disseminated. The repository has no license file.
+Reference publication:
+  Sun, C.; Svensen, J.L.; Borup, M.; Puig, V.; Cembrano, G.; Vezzaro, L.
+  "An MPC-Enabled SWMM Implementation of the Astlingen RTC Benchmarking
+  Network." Water 2020, 12(4), 1034. https://doi.org/10.3390/w12041034
+Original benchmark: Schütze, M. et al. "Astlingen: a benchmark for real time
+control (RTC)." Water Science & Technology, 2017.
+
+-------------------------------------------------------------------------------
+Third-party components used at build or run time
+-------------------------------------------------------------------------------
+EPA SWMM 5.2.4 (via swmm-toolkit)      CC0-1.0 AND (MIT OR Apache-2.0)
+pyswmm                                 BSD-2-Clause
+pymodbus                               BSD-3-Clause
+paho-mqtt                              EPL-2.0 OR BSD-3-Clause (EDL-1.0)
+protobuf (Python)                      BSD-3-Clause
+numpy                                  BSD-3-Clause
+scipy (MPC, linear programming)        BSD-3-Clause; its wheels bundle OpenBLAS
+                                       and LAPACK (BSD-3-Clause) and the GCC
+                                       runtime (GPL-3.0 with GCC Runtime
+                                       Library Exception)
+HiGHS (LP solver, built into scipy)    MIT, Copyright the HiGHS authors
+                                       (https://highs.dev)
+matplotlib                             Matplotlib License (PSF-style)
+imageio-ffmpeg (bundles FFmpeg)        BSD-2-Clause; FFmpeg LGPL/GPL
+OpenPLC Runtime v4                     MIT
+STruC++ (build time only)              GPL-3.0 with Runtime Library Exception
+                                       (generated code and runtime headers may
+                                       be distributed under any license)
+MQTTnet                                MIT
+OPC Foundation .NET Standard stack     MIT (1.5.378.65 and later)
+FluentModbus                           MIT
+Google.Protobuf, Grpc.Tools            BSD-3-Clause, Apache-2.0
+ASP.NET Core Blazor                    MIT
+Siemens iX, Siemens.IX.Blazor          MIT, Copyright Siemens AG; used with the
+                                       neutral classic theme, without Siemens
+                                       brand assets or fonts
+Testcontainers for .NET (tests)        MIT
+Live 3D view models (src/StormBench.Scada/wwwroot/live/kenney), CC0-1.0:
+  City Kit Suburban, City Kit Commercial, City Kit Industrial, City Kit
+  Roads and Nature Kit by Kenney (https://www.kenney.nl); a selection of the GLB
+  models with their colour maps, unchanged, licence files alongside.
+  waternormals.jpg (live/assets) from the three.js examples (MIT, three.js
+  authors).
+Astlingen map backdrop astingen.jpg: downloaded with the model from
+  SWMM-Astlingen (see above), not redistributed; the simulator traces the
+  rivers, the park and the place names from it at run time.
+three.js r180 (Live 3D view)          MIT, Copyright 2010-2025 three.js authors;
+  vendored in src/StormBench.Scada/wwwroot/lib/three with its LICENSE. The
+  addons' imports of 'three' are rewritten to relative paths, nothing else
+  is changed.
+Sparkplug B schema (sparkplug_b.proto) EPL-2.0, Eclipse Tahu,
+  Copyright 2015, 2018 Cirrus Link Solutions and others; the file is
+  included unmodified in src/StormBench.Sparkplug/Protos. The Python bindings
+  generated from it by protoc (grpcio-tools 1.84.0),
+  simulator/stormbench_sim/sparkplug/sparkplug_b_pb2.py, carry the same license.
+Eclipse Mosquitto (container image)    EPL-2.0 / EDL-1.0
+VictoriaMetrics (container image)      Apache-2.0, Copyright VictoriaMetrics, Inc.
+VictoriaLogs (container image)         Apache-2.0, Copyright VictoriaMetrics, Inc.
+PostgreSQL 17 (container image)        PostgreSQL License, Copyright The
+                                       PostgreSQL Global Development Group
+Npgsql                                 PostgreSQL License, Copyright The Npgsql
+                                       Development Team
+Aspire.Hosting.PostgreSQL              MIT
+Grafana (container image)              AGPL-3.0, Copyright Grafana Labs. The
+  official image grafana/grafana is run unmodified as a separate container
+  and is not distributed with this repository. The data source configuration
+  and the dashboards in deploy/grafana are this project's own work
+  (Apache-2.0).
+Source Sans 3 (HMI typeface)           SIL Open Font License 1.1
+  Copyright 2010-2020 Adobe, with Reserved Font Name 'Source'
+Atkinson Hyperlegible Next (charts)    SIL Open Font License 1.1
+  Copyright 2020-2024 The Atkinson Hyperlegible Next Project Authors
+  https://github.com/googlefonts/atkinson-hyperlegible-next
+
+"OPC UA" is a trademark of the OPC Foundation. This project is not certified
+by or affiliated with the OPC Foundation, Autonomy Logic, the U.S. EPA or the
+authors of the Astlingen benchmark. It is not affiliated with or endorsed by
+Siemens AG.

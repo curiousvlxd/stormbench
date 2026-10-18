@@ -1,0 +1,56 @@
+<section class="panel alarms" aria-labelledby="alarms-title">
+    <header class="panel-head">
+        <h2 id="alarms-title">Alarms</h2>
+        <span class="panel-note">ISA-18.2: an alarm stays until it is cleared and acknowledged</span>
+    </header>
+    @if (Alarms.Count == 0)
+    {
+        <p class="muted">No alarms. Overflows, PLC status and communication losses appear here.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="alarm-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Priority</th>
+                        <th scope="col">Source</th>
+                        <th scope="col">Message</th>
+                        <th scope="col">Since</th>
+                        <th scope="col">State</th>
+                        <th scope="col"><span class="visually-hidden">Action</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var alarm in Alarms)
+                    {
+                        <tr class="@RowClass(alarm)">
+                            <td><AlarmBadge Priority="alarm.Definition.Priority" Alarm="alarm" /> @((int)alarm.Definition.Priority)</td>
+                            <td>@alarm.Definition.Source</td>
+                            <td>@alarm.Definition.Message</td>
+                            <td class="num">
+                                @(alarm.SimTime is { } t ? Fmt.Time(t) : Fmt.NoValue)
+                                <span class="wall" title="Wall clock">@Fmt.WallTime(alarm.ActivatedAt)</span>
+                            </td>
+                            <td>@AlarmCss.StateText(alarm.State)</td>
+                            <td>
+                                @if (alarm.NeedsAcknowledge)
+                                {
+                                    <Button Variant="ButtonVariant.tertiary" ClickEvent="() => OnAcknowledge.InvokeAsync(alarm.Definition.Id)">Acknowledge</Button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Alarm> Alarms { get; set; } = [];
+    [Parameter] public EventCallback<string> OnAcknowledge { get; set; }
+
+    private static string? RowClass(Alarm alarm) =>
+        string.Join(' ', new[] { alarm.NeedsAcknowledge ? "unack" : null, alarm.Active ? null : "cleared" }.OfType<string>()) is { Length: > 0 } css ? css : null;
+}

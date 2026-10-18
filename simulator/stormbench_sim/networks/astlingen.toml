@@ -1,0 +1,36 @@
+name = "astlingen"
+inp = "Astlingen_SWMM.inp"
+efd_rules = "EFD_Control.txt"
+control_step_s = 300
+wwtp_outfall = "Out_to_WWTP"
+tanks = ["T1", "T2", "T3", "T4", "T5", "T6"]
+tank_max_depth_m = 5.0
+overflow_points = ["T1", "T2", "T3", "T4", "T5", "T6", "CSO7", "CSO8", "CSO9", "CSO10"]
+efd_threshold_m = 1.0
+
+[[stations]]
+valve = "V2"
+tank = "T2"
+base_setting = 0.2366
+low_setting = 0.1075
+
+[[stations]]
+valve = "V3"
+tank = "T3"
+base_setting = 0.6508
+low_setting = 0.3159
+
+[[stations]]
+valve = "V4"
+tank = "T4"
+base_setting = 0.3523
+low_setting = 0.1894
+
+[[stations]]
+valve = "V6"
+tank = "T6"
+base_setting = 0.4303
+low_setting = 0.1687
+
+[display.label_offsets]
+CSO10 = [-330, 120]

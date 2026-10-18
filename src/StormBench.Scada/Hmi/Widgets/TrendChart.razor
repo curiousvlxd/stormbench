@@ -1,0 +1,94 @@
+@{
+    var points = Trend.Points;
+    var start = Storm?.Start ?? points.FirstOrDefault()?.Time;
+    var end = Storm?.End ?? points.LastOrDefault()?.Time;
+    var span = start is { } s0 && end is { } e0 ? (e0 - s0).TotalSeconds : 0;
+    var maxVolume = Math.Max(10.0, points.Count == 0 ? 0 : points.Max(p => Math.Max(p.Overflow, p.BaseCase ?? 0))) * 1.12;
+    var maxRain = Math.Max(5.0, points.Count == 0 ? 0 : points.Max(p => p.Rain)) * 1.15;
+    double X(DateTime t) => span <= 0 || start is null ? 0 : Math.Clamp((t - start.Value).TotalSeconds / span, 0, 1) * 1000;
+    const double RainTop = 0, RainHeight = 26, VolumeTop = 34, VolumeHeight = 64;
+    double YRain(double r) => RainTop + RainHeight - (r / maxRain * RainHeight);
+    double YVolume(double v) => VolumeTop + VolumeHeight - (v / maxVolume * VolumeHeight);
+    var barWidth = span > 0 && points.Count > 1 ? Math.Max(0.6, (points[1].Time - points[0].Time).TotalSeconds / span * 1000) : 1;
+}
+<section class="panel trend" aria-labelledby="trend-title">
+    <header class="panel-head">
+        <h2 id="trend-title">Storm trend</h2>
+        <ul class="legend">
+            <li><span class="swatch rain" aria-hidden="true"></span>Rain, mm/h</li>
+            <li><span class="swatch run" aria-hidden="true"></span>Overflow, this run</li>
+            <li><span class="swatch reference" aria-hidden="true"></span>Overflow, Base Case</li>
+        </ul>
+    </header>
+    @if (points.Count == 0 || start is null)
+    {
+        <p class="muted trend-empty">The trend of a storm appears here while it runs.</p>
+    }
+    else
+    {
+        <div class="trend-body">
+            <div class="trend-yaxis" aria-hidden="true">
+                <span style="top: 0%">@Fmt.Rain(maxRain / 1.15)</span>
+                <span style="top: 34%">@Fmt.Volume(maxVolume / 1.12)</span>
+                <span style="top: 98%">0</span>
+            </div>
+            <div class="trend-plot">
+                <svg viewBox="0 0 1000 100" preserveAspectRatio="none" role="img"
+                     aria-label="Overflow @Fmt.Volume(points[^1].Overflow) in this run against @Fmt.Volume(points[^1].BaseCase) in the Base Case">
+                    <line class="grid" x1="0" x2="1000" y1="@Svg.N(RainTop + RainHeight)" y2="@Svg.N(RainTop + RainHeight)" vector-effect="non-scaling-stroke" />
+                    <line class="grid" x1="0" x2="1000" y1="@Svg.N(VolumeTop + VolumeHeight)" y2="@Svg.N(VolumeTop + VolumeHeight)" vector-effect="non-scaling-stroke" />
+                    <g class="rain-bars">
+                        @foreach (var p in points.Where(p => p.Rain > 0))
+                        {
+                            <rect x="@Svg.N(X(p.Time) - barWidth)" y="@Svg.N(YRain(p.Rain))" width="@Svg.N(barWidth)" height="@Svg.N(RainTop + RainHeight - YRain(p.Rain))" />
+                        }
+                    </g>
+                    @if (points.Any(p => p.BaseCase is not null))
+                    {
+                        <polyline class="line reference" vector-effect="non-scaling-stroke"
+                                  points="@Svg.Points(points.Where(p => p.BaseCase is not null).Select(p => new Point2(X(p.Time), YVolume(p.BaseCase!.Value))))" />
+                    }
+                    <polyline class="line run" vector-effect="non-scaling-stroke"
+                              points="@Svg.Points(points.Select(p => new Point2(X(p.Time), YVolume(p.Overflow))))" />
+                </svg>
+                <span class="trend-cursor" style="left: @Svg.N(X(points[^1].Time) / 10)%"></span>
+            </div>
+            <div class="trend-xaxis" aria-hidden="true">
+                @foreach (var tick in Ticks(start.Value, end!.Value))
+                {
+                    <span style="left: @Svg.N(X(tick) / 10)%">@tick.ToString(TickFormat(start.Value, end.Value), CultureInfo.InvariantCulture)</span>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public TrendSeries Trend { get; set; } = TrendSeries.Empty;
+    [Parameter] public StormWindow? Storm { get; set; }
+
+    private static readonly TimeSpan[] TickSteps =
+        [TimeSpan.FromHours(1), TimeSpan.FromHours(3), TimeSpan.FromHours(6), TimeSpan.FromHours(12), TimeSpan.FromDays(1), TimeSpan.FromDays(7), TimeSpan.FromDays(30)];
+
+    /// <summary>At most about eight ticks on round hours, days or months.</summary>
+    private static IEnumerable<DateTime> Ticks(DateTime start, DateTime end)
+    {
+        var span = end - start;
+        var step = TickSteps.FirstOrDefault(s => span / s <= 8, TickSteps[^1]);
+        var first = new DateTime(start.Year, start.Month, start.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        for (var t = first; t < end; t += step)
+        {
+            if (t >= start)
+            {
+                yield return t;
+            }
+        }
+    }
+
+    private static string TickFormat(DateTime start, DateTime end) => (end - start).TotalDays switch
+    {
+        <= 1.5 => "HH:mm",
+        <= 10 => "d MMM HH:mm",
+        _ => "d MMM",
+    };
+}

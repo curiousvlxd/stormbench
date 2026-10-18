@@ -1,0 +1,67 @@
+@{
+    var l = Diagram.Layout;
+}
+<svg class="mnemonic" viewBox="0 0 @Svg.N(l.Width) @Svg.N(l.Height)" role="img" aria-labelledby="mnemonic-title mnemonic-desc">
+    <title id="mnemonic-title">Astlingen network overview</title>
+    <desc id="mnemonic-desc">@Description</desc>
+    <g class="pipes">
+        @foreach (var pipe in l.Pipes)
+        {
+            <line class="pipe" x1="@Svg.N(pipe.From.X)" y1="@Svg.N(pipe.From.Y)" x2="@Svg.N(pipe.To.X)" y2="@Svg.N(pipe.To.Y)" />
+        }
+    </g>
+    <g class="flow">
+        @foreach (var pipe in l.Pipes.Where(p => !p.IsOutlet))
+        {
+            var dx = pipe.To.X - pipe.From.X;
+            var dy = pipe.To.Y - pipe.From.Y;
+            if (Math.Sqrt((dx * dx) + (dy * dy)) < 700)
+            {
+                continue;
+            }
+            var angle = Math.Atan2(dy, dx) * 180.0 / Math.PI;
+            <path class="flow-chevron" d="M -55 -55 L 25 0 L -55 55"
+                  transform="translate(@Svg.N(pipe.From.X + (dx / 2)) @Svg.N(pipe.From.Y + (dy / 2))) rotate(@Svg.N(angle))" />
+        }
+    </g>
+    <g class="joints">
+        @foreach (var joint in l.Joints)
+        {
+            <circle class="joint" cx="@Svg.N(joint.X)" cy="@Svg.N(joint.Y)" r="30" />
+        }
+    </g>
+    @if (l.Outfall is { } outfall)
+    {
+        <OutfallSymbol Shape="outfall" Inflow="Diagram.WwtpInflow" Stale="Diagram.FieldStale" />
+    }
+    @foreach (var weir in Diagram.Weirs)
+    {
+        <WeirSymbol View="weir" />
+    }
+    @foreach (var tank in Diagram.Tanks)
+    {
+        <TankSymbol View="tank" MaxDepth="MaxDepth" />
+    }
+    @foreach (var valve in Diagram.Valves)
+    {
+        <ValveSymbol View="valve" ShowProposal="ShowProposals" />
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public DiagramView Diagram { get; set; } = default!;
+    [Parameter] public double MaxDepth { get; set; } = 5.0;
+    [Parameter] public bool ShowProposals { get; set; }
+
+    private string Description
+    {
+        get
+        {
+            var tanks = string.Join(", ", Diagram.Tanks.Select(t => $"{t.Shape.Id} {Fmt.Percent(t.Fill)}"));
+            var spilling = Diagram.Tanks.Where(t => t.Overflowing).Select(t => t.Shape.Id)
+                .Concat(Diagram.Weirs.Where(w => w.Overflowing).Select(w => w.Shape.Id)).ToList();
+            return $"Tank levels: {tanks}. "
+                   + (spilling.Count == 0 ? "No overflow now." : $"Overflowing now: {string.Join(", ", spilling)}.");
+        }
+    }
+}

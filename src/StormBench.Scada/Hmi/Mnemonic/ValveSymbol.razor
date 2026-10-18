@@ -1,0 +1,42 @@
+@{
+    var s = View.Shape;
+    var differs = View.Proposal is { } p && View.Setpoint is { } sp && Math.Abs(p - sp) > 0.0005;
+    var actualDiffers = View.Alarm is not null && View.Opening is not null;
+    var extra = differs && ShowProposal ? 1 : 0;
+}
+<g class="@Css">
+    <title>@Tooltip</title>
+    <g transform="translate(@Svg.N(s.Center.X) @Svg.N(s.Center.Y)) rotate(@Svg.N(s.AngleDegrees))">
+        <path class="valve-body" d="M -100 -78 L 100 78 L 100 -78 L -100 78 Z" />
+    </g>
+    <text class="valve-tag" x="@Svg.N(s.Label.X)" y="@Svg.N(s.Label.Y)" text-anchor="@s.Label.Anchor">@s.Id</text>
+    <text class="valve-value" x="@Svg.N(s.Label.X)" y="@Svg.N(s.Label.Y + DiagramLayout.LineGap)" text-anchor="@s.Label.Anchor">@(s.Controlled ? Fmt.Percent(View.Setpoint) : "fixed")</text>
+    @if (differs && ShowProposal)
+    {
+        <g><text class="valve-proposal" x="@Svg.N(s.Label.X)" y="@Svg.N(s.Label.Y + (2 * DiagramLayout.LineGap))" text-anchor="@s.Label.Anchor">center @Fmt.Percent(View.Proposal)</text></g>
+    }
+    @if (actualDiffers)
+    {
+        <g><text class="valve-actual" x="@Svg.N(s.Label.X)" y="@Svg.N(s.Label.Y + ((2 + extra) * DiagramLayout.LineGap))" text-anchor="@s.Label.Anchor">actual @Fmt.Percent(View.Opening)</text></g>
+    }
+    @if (View.Alarm is { } alarm)
+    {
+        <AlarmIndicator Alarm="alarm" X="@s.Center.X" Y="@(s.Center.Y - 260)" />
+    }
+</g>
+
+@code {
+    [Parameter, EditorRequired] public ValveView View { get; set; } = default!;
+
+    /// <summary>Only meaningful when the center proposes (mode 3).</summary>
+    [Parameter] public bool ShowProposal { get; set; }
+
+    private string Css => "valve" + (View.Shape.Controlled ? " controlled" : " fixed") + (View.Stale ? " stale" : "");
+
+    private string Tooltip => View.Shape.Controlled
+        ? $"Outlet {View.Shape.Id} of tank {View.Shape.Tank}: opening {Fmt.Percent(View.Setpoint)} (PLC setpoint)"
+          + (ShowProposal ? $", center proposal {Fmt.Percent(View.Proposal)}" : "")
+          + (View.Opening is { } o ? $", position feedback {Fmt.Percent(o)}" : "")
+          + (View.Stale ? ", value stale" : "")
+        : $"Outlet {View.Shape.Id} of tank {View.Shape.Tank}: fixed throttle, not controlled";
+}

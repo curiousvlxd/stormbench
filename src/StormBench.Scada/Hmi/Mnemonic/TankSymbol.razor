@@ -1,0 +1,51 @@
+@{
+    var s = View.Shape;
+    var x0 = s.Center.X - (s.Width / 2);
+    var y0 = s.Center.Y - (s.Height / 2);
+    var water = s.Height * (View.Fill ?? 0);
+    var threshold = y0 + s.Height - (s.Height * ThresholdDepth / MaxDepth);
+}
+<g class="@Css">
+    <title>@Tooltip</title>
+    <rect class="tank-body" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" />
+    <rect class="tank-water" x="@Svg.N(x0)" y="@Svg.N(y0 + s.Height - water)" width="@Svg.N(s.Width)" height="@Svg.N(water)" />
+    <line class="tank-threshold" x1="@Svg.N(x0)" x2="@Svg.N(x0 + 90)" y1="@Svg.N(threshold)" y2="@Svg.N(threshold)" />
+    <rect class="tank-outline" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" />
+    @if (View.TrueFill is { } real)
+    {
+        var realY = y0 + s.Height - (s.Height * real);
+        <line class="tank-true-level" x1="@Svg.N(x0 - 40)" x2="@Svg.N(x0 + s.Width + 40)" y1="@Svg.N(realY)" y2="@Svg.N(realY)" />
+        <g><text class="value-true" x="@Svg.N(s.Values.X)" y="@Svg.N(s.Values.Y + (2 * DiagramLayout.LineGap))" text-anchor="@s.Values.Anchor">real @Fmt.Percent(real)</text></g>
+    }
+    @if (View.Overflowing)
+    {
+        <path class="spill" d="M @Svg.N(s.Center.X + 60) @Svg.N(y0 - 20) q 90 -170 300 -190" />
+        <path class="spill-head" d="M @Svg.N(s.Center.X + 360) @Svg.N(y0 - 210) l -120 -55 l 25 120 z" />
+    }
+    <text class="tag" x="@Svg.N(s.Tag.X)" y="@Svg.N(s.Tag.Y)" text-anchor="middle">@s.Id</text>
+    <text class="value" x="@Svg.N(s.Values.X)" y="@Svg.N(s.Values.Y)" text-anchor="@s.Values.Anchor">@LevelText</text>
+    <text class="value-sub" x="@Svg.N(s.Values.X)" y="@Svg.N(s.Values.Y + DiagramLayout.LineGap)" text-anchor="@s.Values.Anchor">@Fmt.Metres(View.Level)</text>
+    @if (View.Alarm is { } alarm)
+    {
+        <AlarmIndicator Alarm="alarm" X="@s.Indicator.X" Y="@s.Indicator.Y" />
+    }
+</g>
+
+@code {
+    [Parameter, EditorRequired] public TankView View { get; set; } = default!;
+    [Parameter] public double MaxDepth { get; set; } = 5.0;
+
+    /// <summary>EFD treats tanks below this depth as empty enough (1 m in Astlingen).</summary>
+    [Parameter] public double ThresholdDepth { get; set; } = 1.0;
+
+    private string Css => "tank" + (View.Stale ? " stale" : "") + (View.Overflowing ? " overflowing" : "");
+
+    /// <summary>Stale values keep their last reading, marked with a question mark.</summary>
+    private string LevelText => Fmt.Percent(View.Fill) + (View.Stale && View.Fill is not null ? " ?" : "");
+
+    private string Tooltip =>
+        $"Tank {View.Shape.Id}: {Fmt.Metres(View.Level)} of {Fmt.Metres(MaxDepth)} ({Fmt.Percent(View.Fill)})"
+        + (View.Stale ? ", value stale" : "")
+        + (View.TrueFill is { } real ? $", sensor frozen, real level {Fmt.Percent(real)}" : "")
+        + (View.Overflowing ? ", overflowing" : "");
+}

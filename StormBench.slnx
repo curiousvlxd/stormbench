@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/StormBench.AppHost/StormBench.AppHost.csproj" />
+    <Project Path="src/StormBench.Application/StormBench.Application.csproj" />
+    <Project Path="src/StormBench.Connectivity/StormBench.Connectivity.csproj" />
+    <Project Path="src/StormBench.Contracts/StormBench.Contracts.csproj" />
+    <Project Path="src/StormBench.Domain/StormBench.Domain.csproj" />
+    <Project Path="src/StormBench.Infrastructure/StormBench.Infrastructure.csproj" />
+    <Project Path="src/StormBench.Scada/StormBench.Scada.csproj" />
+    <Project Path="src/StormBench.ServiceDefaults/StormBench.ServiceDefaults.csproj" />
+    <Project Path="src/StormBench.Sparkplug/StormBench.Sparkplug.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/StormBench.Connectivity.Tests/StormBench.Connectivity.Tests.csproj" />
+    <Project Path="tests/StormBench.Contracts.Tests/StormBench.Contracts.Tests.csproj" />
+    <Project Path="tests/StormBench.Domain.Tests/StormBench.Domain.Tests.csproj" />
+    <Project Path="tests/StormBench.Scada.Tests/StormBench.Scada.Tests.csproj" />
+    <Project Path="tests/StormBench.Sparkplug.Tests/StormBench.Sparkplug.Tests.csproj" />
+  </Folder>
+</Solution>

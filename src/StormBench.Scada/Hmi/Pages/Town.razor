@@ -1,0 +1,780 @@
+@page "/"
+@using StormBench.Scada.Hmi.Live
+@implements IAsyncDisposable
+@inject HmiFeed Feed
+@inject StartStormHandler Start
+@inject StopStormHandler Stop
+@inject SetCenterLinkHandler CenterLink
+@inject JamGateHandler Jam
+@inject FreezeSensorHandler Freeze
+@inject IJSRuntime JS
+@inject ILogger<Town> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Astlingen live, StormBench</PageTitle>
+
+<div class="live @(_film ? "film" : null)">
+    <div class="live-stage" @ref="_stage"></div>
+    @if (_view.Drawing is null)
+    {
+        <div class="live-empty">
+            <p>@(_view.Scenario.Simulator is Presence.Online ? "Loading the town..." : "Waiting for the simulator. The town appears when it publishes its model.")</p>
+        </div>
+    }
+
+    <header class="live-top glass">
+        <div class="live-brand">
+            <img class="live-logo" src="live/assets/logo.svg" alt="" width="24" height="24" />
+            <span class="live-title">StormBench</span>
+            <span class="live-bench" title="The benchmark this run uses">Astlingen</span>
+        </div>
+        <nav class="live-tabs" aria-label="Views">
+            <a class="live-tab active" href="" aria-current="page">Live 3D</a>
+            <a class="live-tab" href="operator">Operator SCADA</a>
+        </nav>
+        <div class="live-clock">
+            @if (_view.Scenario.Clock is { } clock)
+            {
+                <span class="live-clock-time">@clock.ToString("d MMM yyyy, HH:mm", CultureInfo.InvariantCulture)</span>
+                @if (_view.Scenario.Busy)
+                {
+                    <span class="live-progress" aria-hidden="true"><span style="width: @Svg.N(_view.Scenario.Progress * 100)%"></span></span>
+                }
+            }
+            else
+            {
+                <span class="live-clock-storm">No storm yet</span>
+            }
+        </div>
+        <div class="live-top-actions">
+            @if (_demo is { Done: false })
+            {
+                <button type="button" class="live-demo on" @onclick="ExitDemoAsync">Exit demo</button>
+            }
+            else
+            {
+                <button type="button" class="live-demo" disabled="@(!CanPlayDemo)" @onclick="PlayDemoAsync"
+                        title="A guided storm: the link to the control room drops, a gate jams, then the result">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                    Play demo
+                </button>
+            }
+            <button type="button" class="live-icon" @onclick="ResetViewAsync" title="Whole town" aria-label="Whole town">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+            </button>
+            <button type="button" class="live-icon" @onclick="() => _help = true" title="How it works" aria-label="How it works">?</button>
+        </div>
+    </header>
+
+    @if (_demo?.Chapter(GateCaught) is { } chapter)
+    {
+        <div class="live-chapter" @key="chapter.Title" @onclick="DismissChapter" aria-live="polite">
+            <span class="chapter-step">@chapter.Number / @chapter.Of</span>
+            <h2>@chapter.Title</h2>
+            <p class="@(chapter.Subtitle == "SCADA caught it" ? "caught" : null)">@chapter.Subtitle</p>
+        </div>
+    }
+
+    <section class="live-score glass" aria-label="Into the river">
+        @{
+            var kpi = _view.Kpi;
+            var hasRun = _view.Scenario.Run > 0;
+            var isBase = _view.Scenario.Algorithm?.Value == "base";
+            var total = kpi.Total.CubicMeters;
+            var baseCase = kpi.BaseCase?.CubicMeters;
+            var scale = Math.Max(1.0, Math.Max(total, baseCase ?? 0));
+        }
+        <h2>Into the river</h2>
+        <div class="race">
+            <div class="race-row this">
+                <span class="race-name">@AlgorithmName((_view.Scenario.Algorithm ?? _algorithm)?.Value)</span>
+                <span class="race-value">@(hasRun ? Fmt.Volume(kpi.Total) : Fmt.NoValue)</span>
+                <span class="race-bar"><span style="width: @Svg.N(hasRun ? total / scale * 100 : 0)%"></span></span>
+            </div>
+            @if (!isBase)
+            {
+                <div class="race-row base">
+                    <span class="race-name">No control</span>
+                    <span class="race-value">@(baseCase is { } bc ? Fmt.Volume(bc) : Fmt.NoValue)</span>
+                    <span class="race-bar"><span style="width: @Svg.N(baseCase is { } b ? b / scale * 100 : 0)%"></span></span>
+                </div>
+            }
+        </div>
+        @if (hasRun && !isBase && kpi.Comparison is Comparison.Better or Comparison.Worse && kpi.Delta?.CubicMeters is { } delta)
+        {
+            <p class="verdict @(delta < 0 ? "good" : "bad")" title="@(delta < 0 ? LiveStory.Picture(-delta) : null)">
+                <strong>@(delta < 0 ? "−" : "+")@Fmt.Volume(Math.Abs(delta))</strong>
+                <span>@(delta < 0 ? "less" : "more") than no control</span>
+            </p>
+        }
+    </section>
+
+    @if (_selected is { } selected)
+    {
+        <aside class="live-card glass" aria-live="polite">
+            <button type="button" class="live-close" @onclick="CloseCardAsync" aria-label="Close">×</button>
+            @Card(selected)
+        </aside>
+    }
+
+    <div class="live-story" aria-live="polite">
+        @foreach (var line in _story.Take(2))
+        {
+            <p class="story-line @line.Tone.ToString().ToLowerInvariant()">@line.Text</p>
+        }
+    </div>
+
+    <footer class="live-dock glass">
+        @if (_view.Scenario.Catalog is { } catalog)
+        {
+            var locked = _view.Scenario.Busy || _pending;
+            <div class="dock-group">
+                <label class="dock-label" for="live-storm">Storm</label>
+                <select id="live-storm" class="dock-select" disabled="@locked" value="@((_view.Scenario.Busy ? _view.Scenario.Storm : SelectedStorm(catalog))?.Value)"
+                        @onchange="e => _storm = e.Value?.ToString() is { } storm ? new StormId(storm) : null">
+                    @foreach (var storm in catalog.Storms)
+                    {
+                        <option value="@storm.Id.Value">@storm.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="dock-group">
+                <span class="dock-label" id="live-control">Control</span>
+                <div class="chips" role="radiogroup" aria-labelledby="live-control">
+                    @foreach (var option in catalog.Algorithms.Where(a => a.Id.Value != "efd-plc-intended"))
+                    {
+                        var id = option.Id;
+                        var on = id == SelectedAlgorithm(catalog);
+                        <button type="button" role="radio" aria-checked="@(on ? "true" : "false")" class="chip @(on ? "on" : null)" disabled="@locked"
+                                title="@AlgorithmHint(id.Value)" @onclick="() => _algorithm = id">@AlgorithmName(id.Value)</button>
+                    }
+                </div>
+            </div>
+            @if (_view.Scenario.Busy)
+            {
+                <button type="button" class="dock-go stop" disabled="@(!_view.Scenario.CanStop)" @onclick="StopAsync">Stop</button>
+            }
+            else
+            {
+                <button type="button" class="dock-go" disabled="@(!_view.Scenario.CanStart || _pending)" @onclick="() => StartAsync(catalog)">
+                    @(_pending ? "Starting..." : "Start storm")
+                </button>
+            }
+        }
+        else
+        {
+            <p class="dock-wait">@(_view.Scenario.Simulator is Presence.Online ? "Waiting for the simulator's storms." : "Simulator offline.")</p>
+        }
+
+        <span class="dock-divider" aria-hidden="true"></span>
+
+        <div class="dock-group faults">
+            <span class="dock-label">Faults</span>
+            <div class="chips">
+                <button type="button" class="chip fault @(_view.Scenario.CenterLinkCut ? "on" : null)" disabled="@(!_view.Scenario.CanInjectFaults || _faultPending)"
+                        title="Cut the link between SCADA and the PLC" @onclick="ToggleLinkAsync">
+                    @(_view.Scenario.CenterLinkCut ? "Fix link" : "Cut link")
+                </button>
+                <button type="button" class="chip fault @(_view.Scenario.StuckGate is not null ? "on" : null)" disabled="@(!_view.Scenario.CanInjectFaults || _faultPending || GateTarget is null)"
+                        title="@GateTitle" @onclick="ToggleGateAsync">
+                    @(_view.Scenario.StuckGate is not null ? "Free gate" : "Jam gate")
+                </button>
+                <button type="button" class="chip fault @(_view.Scenario.FrozenSensor is not null ? "on" : null)" disabled="@(!_view.Scenario.CanInjectFaults || _faultPending || SensorTarget is null)"
+                        title="@SensorTitle" @onclick="ToggleSensorAsync">
+                    @(_view.Scenario.FrozenSensor is not null ? "Unfreeze" : "Freeze sensor")
+                </button>
+            </div>
+        </div>
+        @if (_refusal is not null)
+        {
+            <p class="dock-refusal" role="status">@_refusal</p>
+        }
+    </footer>
+
+    @if (_help)
+    {
+        <div class="live-help" role="dialog" aria-modal="true" aria-labelledby="help-title" @onclick="() => _help = false">
+            <div class="help-body glass" @onclick:stopPropagation="true">
+                <button type="button" class="live-close" @onclick="() => _help = false" aria-label="Close">×</button>
+                <h2 id="help-title">How it works</h2>
+                <ol class="help-steps">
+                    <li><strong>Rain</strong> fills the sewers of a model town (Astlingen benchmark, real rain from 2000).</li>
+                    <li><strong>Tanks</strong> hold water back. When full, dirty water spills into the river.</li>
+                    <li><strong>A PLC</strong> moves the tank gates so less spills. Real controller code, real industrial protocols.</li>
+                    <li><strong>Faults</strong>: cut the link, jam a gate, freeze a sensor. The PLC must keep going, SCADA must notice.</li>
+                </ol>
+                <p class="help-real">Live: levels, gates, spills, rain. Decoration: houses, flow in pipes.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromMilliseconds(100);
+    private readonly CancellationTokenSource _stop = new();
+    private ElementReference _stage;
+    private HmiView _view = default!;
+    private FeedVersion _version;
+    private IReadOnlyList<StoryLine> _story = [];
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _scene;
+    private StormBench.Contracts.NetworkDescription? _sceneNetwork;
+    private DotNetObjectReference<Town>? _self;
+    private string? _selected;
+    private StormId? _storm;
+    private AlgorithmId? _algorithm;
+    private bool _pending;
+    private long _pendingRun;
+    private DateTime _pendingAt;
+    private bool _faultPending;
+    private string? _refusal;
+    private bool _help;
+    private LiveDemo? _demo;
+
+    /// <summary>Film mode (?film, optional &amp;pace=seconds per step): controls hidden for a recording.</summary>
+    private bool _film;
+    private double? _filmPace;
+
+    private static readonly TimeSpan PendingTimeout = TimeSpan.FromSeconds(3);
+
+    protected override void OnInitialized()
+    {
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Navigation.Uri).Query);
+        _film = query.ContainsKey("film");
+        if (query.TryGetValue("pace", out var pace) && double.TryParse(pace.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
+        {
+            _filmPace = seconds;
+        }
+        _version = Feed.Version;
+        Rebuild();
+        if (RendererInfo.IsInteractive)
+        {
+            _ = RefreshAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!RendererInfo.IsInteractive)
+        {
+            return;
+        }
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./live/scene.js");
+        }
+        await EnsureSceneAsync();
+    }
+
+    /// <summary>Build the 3D town when the network is known, again if the simulator publishes another one.</summary>
+    private async Task EnsureSceneAsync()
+    {
+        if (_module is null || _view.Drawing is not { } network || ReferenceEquals(network, _sceneNetwork))
+        {
+            return;
+        }
+        if (_scene is not null)
+        {
+            await _scene.InvokeVoidAsync("dispose");
+            await _scene.DisposeAsync();
+        }
+        _sceneNetwork = network;
+        _scene = await _module.InvokeAsync<IJSObjectReference>("create", _stage, network, _self);
+        await PushAsync();
+    }
+
+    private void Rebuild()
+    {
+        _view = Feed.Build();
+        _story = LiveStory.Tell(_view);
+        var s = _view.Scenario;
+        if (_pending && (s.Run != _pendingRun || s.Busy || DateTime.UtcNow - _pendingAt > PendingTimeout))
+        {
+            _pending = false;
+        }
+    }
+
+    private async Task PushAsync()
+    {
+        if (_scene is null)
+        {
+            return;
+        }
+        try
+        {
+            await _scene.InvokeVoidAsync("update", LiveFrame.From(_view));
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        using var timer = new PeriodicTimer(RefreshPeriod);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_stop.Token))
+            {
+                var version = Feed.Version;
+                if (version == _version && !_pending)
+                {
+                    continue;
+                }
+                _version = version;
+                try
+                {
+                    Rebuild();
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or KeyNotFoundException)
+                {
+                    Logger.BuildFailed(ex);
+                    continue;
+                }
+                await EnsureSceneAsync();
+                await PushAsync();
+                await AdvanceDemoAsync();
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public async Task Pick(string? id)
+    {
+        if (id is null)
+        {
+            return;
+        }
+        _selected = id;
+        if (_scene is not null)
+        {
+            await _scene.InvokeVoidAsync("focus", id);
+        }
+        StateHasChanged();
+    }
+
+    private async Task CloseCardAsync()
+    {
+        _selected = null;
+        if (_scene is not null)
+        {
+            await _scene.InvokeVoidAsync("focus", (string?)null);
+        }
+    }
+
+    private async Task ResetViewAsync()
+    {
+        _selected = null;
+        if (_scene is not null)
+        {
+            await _scene.InvokeVoidAsync("overview");
+        }
+    }
+
+    private StormId SelectedStorm(ScenarioCatalog catalog) =>
+        (catalog.Storm(_storm) ?? catalog.Storm(_view.Scenario.Storm) ?? catalog.Storm(catalog.DefaultStorm) ?? catalog.Storms[0]).Id;
+
+    private AlgorithmId SelectedAlgorithm(ScenarioCatalog catalog) =>
+        (_view.Scenario.Busy ? _view.Scenario.Algorithm : null) ?? _algorithm ?? catalog.DefaultAlgorithm;
+
+    /// <summary>The Live view runs storms at the catalog's default speed; the operator display offers the others.</summary>
+    private static double PaceValue(ScenarioCatalog catalog) => catalog.DefaultPace;
+
+    private static string AlgorithmName(string? id) => id switch
+    {
+        "base" => "No control",
+        "efd-plc" => "Smart",
+        "efd-plc-intended" => "Smart (variant)",
+        "efd-center" => "Smart + SCADA",
+        "mpc-center" => "Predictive (MPC)",
+        null => "This run",
+        _ => id,
+    };
+
+    private static string AlgorithmHint(string id) => id switch
+    {
+        "base" => "Gates stay at fixed openings, like most towns today",
+        "efd-plc" => "The PLC balances the tanks on its own",
+        "efd-center" => "SCADA proposes gate settings, the PLC checks and applies them",
+        "mpc-center" => "An optimiser that knows the rain ahead (MPC, run by the simulator) proposes gate settings, the PLC checks and applies them",
+        _ => id,
+    };
+
+    private async Task StartAsync(ScenarioCatalog catalog)
+    {
+        _refusal = null;
+        _pending = true;
+        _pendingRun = _view.Scenario.Run;
+        _pendingAt = DateTime.UtcNow;
+        var result = await Start.HandleAsync(new StartStorm(SelectedStorm(catalog), SelectedAlgorithm(catalog), PaceValue(catalog)), CancellationToken.None);
+        if (!result.Accepted)
+        {
+            _pending = false;
+            _refusal = result.Reason;
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        _refusal = null;
+        var result = await Stop.HandleAsync(CancellationToken.None);
+        if (!result.Accepted)
+        {
+            _refusal = result.Reason;
+        }
+    }
+
+    /// <summary>The gate a "jam" applies to: the one selected (or the outlet of the selected tank), else the first station.</summary>
+    private GateId? GateTarget
+    {
+        get
+        {
+            var stations = _view.Site.Network?.Stations ?? [];
+            return stations.FirstOrDefault(s => s.Gate.Value == _selected || s.Tank.Value == _selected)?.Gate ?? stations.FirstOrDefault()?.Gate;
+        }
+    }
+
+    /// <summary>The tank a "freeze" applies to: the one selected (or behind the selected gate), else a station tank that is filling.</summary>
+    private TankId? SensorTarget
+    {
+        get
+        {
+            var network = _view.Site.Network;
+            if (network is null)
+            {
+                return null;
+            }
+            if (_selected is { } id && network.HasTank(new TankId(id)))
+            {
+                return new TankId(id);
+            }
+            if (network.Stations.FirstOrDefault(s => s.Gate.Value == _selected)?.Tank is { } behind)
+            {
+                return behind;
+            }
+            var filling = _view.Diagram?.Tanks
+                .Where(t => t.Fill is > 0.15 and < 0.85 && network.Stations.Any(s => s.Tank.Value == t.Shape.Id))
+                .OrderByDescending(t => t.Fill)
+                .FirstOrDefault()?.Shape.Id;
+            return filling is { } tank ? new TankId(tank)
+                : network.Stations.LastOrDefault()?.Tank ?? (network.Tanks is [var first, ..] ? first : null);
+        }
+    }
+
+    private string GateTitle => $"{LiveStory.Plain((_view.Scenario.StuckGate ?? GateTarget)?.Value ?? "Gate")} stops moving";
+
+    private string SensorTitle => $"{LiveStory.Plain((_view.Scenario.FrozenSensor ?? SensorTarget)?.Value ?? "Tank")} level sensor keeps an old value";
+
+    private Task ToggleLinkAsync() => FaultAsync(() => CenterLink.HandleAsync(new SetCenterLink(!_view.Scenario.CenterLinkCut), CancellationToken.None));
+
+    private Task ToggleGateAsync() => SetGateAsync(_view.Scenario.StuckGate is null ? GateTarget : null);
+
+    private Task ToggleSensorAsync() => SetSensorAsync(_view.Scenario.FrozenSensor is null ? SensorTarget : null);
+
+    private Task SetGateAsync(GateId? gate) => FaultAsync(() => Jam.HandleAsync(new JamGate(gate), CancellationToken.None));
+
+    private Task SetSensorAsync(TankId? tank) => FaultAsync(() => Freeze.HandleAsync(new FreezeSensor(tank), CancellationToken.None));
+
+    private async Task FaultAsync(Func<Task<CommandResult>> command)
+    {
+        _refusal = null;
+        _faultPending = true;
+        try
+        {
+            var result = await command();
+            if (!result.Accepted)
+            {
+                _refusal = result.Reason;
+            }
+        }
+        finally
+        {
+            _faultPending = false;
+        }
+    }
+
+    private bool CanPlayDemo =>
+        _view.Scenario.CanStart && !_pending
+        && _view.Scenario.Catalog is { } catalog
+        && catalog.Storm(LiveDemo.Storm) is not null
+        && LiveDemo.PickAlgorithm(catalog) is not null
+        && _view.Site.Network?.Stations.Count > 0;
+
+    private bool GateCaught => _demo is { } demo && _view.Alarms.Any(a => a.Active && a.Definition.Id == AlarmDefinitions.GateDeviationId(demo.Gate));
+
+    private async Task PlayDemoAsync()
+    {
+        if (!CanPlayDemo || _view.Site.Network is not { } network)
+        {
+            return;
+        }
+        _refusal = null;
+        _selected = null;
+        if (_view.Scenario.CenterLinkCut)
+        {
+            await CenterLink.HandleAsync(new SetCenterLink(false), CancellationToken.None);
+        }
+        if (_view.Scenario.StuckGate is not null)
+        {
+            await Jam.HandleAsync(new JamGate(null), CancellationToken.None);
+        }
+        if (_view.Scenario.FrozenSensor is not null)
+        {
+            await Freeze.HandleAsync(new FreezeSensor(null), CancellationToken.None);
+        }
+        var algorithm = LiveDemo.PickAlgorithm(_view.Scenario.Catalog!)!.Value;
+        _demo = new LiveDemo(_view.Scenario.Run, network.Stations[0].Gate);
+        _algorithm = algorithm;
+        _storm = LiveDemo.Storm;
+        _pending = true;
+        _pendingRun = _view.Scenario.Run;
+        _pendingAt = DateTime.UtcNow;
+        var result = await Start.HandleAsync(new StartStorm(LiveDemo.Storm, algorithm, _filmPace ?? LiveDemo.PaceSeconds), CancellationToken.None);
+        if (!result.Accepted)
+        {
+            _pending = false;
+            _demo = null;
+            _refusal = result.Reason;
+        }
+    }
+
+    /// <summary>A controlled gate the controller has opened beyond its base setting right now.</summary>
+    private GateId? MovedGate()
+    {
+        var network = _view.Site.Network;
+        return _view.Diagram?.Valves
+            .Where(v => v.Shape.Controlled && v.Setpoint is { } sp && network?.StationOf(new GateId(v.Shape.Id)) is { } st && sp > st.BaseSetting.Fraction + 0.1)
+            .Select(v => (GateId?)new GateId(v.Shape.Id))
+            .FirstOrDefault();
+    }
+
+    private async Task ExitDemoAsync()
+    {
+        if (_demo is not { } demo)
+        {
+            return;
+        }
+        await RunDemoAsync(demo.Abort());
+        _demo = null;
+        if (_view.Scenario.CanStop)
+        {
+            await Stop.HandleAsync(CancellationToken.None);
+        }
+    }
+
+    private void DismissChapter()
+    {
+        if (_demo is { Done: true })
+        {
+            _demo = null;
+        }
+    }
+
+    private async Task AdvanceDemoAsync()
+    {
+        if (_demo is not { Done: false } demo)
+        {
+            return;
+        }
+        await RunDemoAsync(demo.Advance(_view.Scenario, () => $"{LiveStory.Verdict(_view.Kpi, finished: false).Text}, even with two faults", MovedGate));
+    }
+
+    private async Task RunDemoAsync(IReadOnlyList<DemoCommand> commands)
+    {
+        foreach (var command in commands)
+        {
+            switch (command)
+            {
+                case DemoCommand.CutLink:
+                    await CenterLink.HandleAsync(new SetCenterLink(true), CancellationToken.None);
+                    break;
+                case DemoCommand.RestoreLink when _view.Scenario.CenterLinkCut:
+                    await CenterLink.HandleAsync(new SetCenterLink(false), CancellationToken.None);
+                    break;
+                case DemoCommand.JamGate when _demo is { } demo:
+                    await Jam.HandleAsync(new JamGate(demo.Gate), CancellationToken.None);
+                    break;
+                case DemoCommand.FreeGate when _view.Scenario.StuckGate is not null:
+                    await Jam.HandleAsync(new JamGate(null), CancellationToken.None);
+                    break;
+                case DemoCommand.Overview when _scene is not null:
+                    await _scene.InvokeVoidAsync("overview");
+                    break;
+                case DemoCommand.FocusCenter when _scene is not null:
+                    await _scene.InvokeVoidAsync("focus", "center");
+                    break;
+                case DemoCommand.FocusPlc when _scene is not null:
+                    await _scene.InvokeVoidAsync("focus", "plc");
+                    break;
+                case DemoCommand.FocusGate when _scene is not null && _demo is { } demo:
+                    await _scene.InvokeVoidAsync("focus", demo.Gate.Value);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    private RenderFragment Card(string id) => __builder =>
+    {
+        var network = _view.Site.Network;
+        var diagram = _view.Diagram;
+        var tank = diagram?.Tanks.FirstOrDefault(t => t.Shape.Id == id);
+        var valve = diagram?.Valves.FirstOrDefault(v => v.Shape.Id == id);
+        var weir = diagram?.Weirs.FirstOrDefault(w => w.Shape.Id == id);
+        var spilled = _view.Site.FieldValues.OverflowVolume(new OverflowPointId(id))?.CubicMeters;
+        if (tank is not null && network is not null)
+        {
+            var station = network.StationAt(new TankId(id));
+            var gate = station is null ? null : diagram!.Valves.FirstOrDefault(v => v.Shape.Id == station.Gate.Value);
+            var real = tank.TrueFill ?? tank.Fill;
+            <p class="card-kind">Storage tank</p>
+            <h2>@LiveStory.Plain(id)</h2>
+            <p class="card-text">Holds water back. Full means spilling.</p>
+            <div class="card-meter"><span style="height: @Svg.N((real ?? 0) * 100)%"></span></div>
+            <dl class="card-facts">
+                <div><dt>Filled</dt><dd>@Fmt.Percent(real)</dd></div>
+                @if (tank.TrueFill is not null)
+                {
+                    <div class="warn"><dt>Sensor says</dt><dd>@Fmt.Percent(tank.Fill) <small>frozen</small></dd></div>
+                }
+                <div><dt>Spilled here</dt><dd>@Fmt.Volume(spilled ?? 0)</dd></div>
+                @if (gate is not null)
+                {
+                    <div><dt>Outlet</dt><dd>@LiveStory.Plain(gate.Shape.Id), @Fmt.Percent(gate.Opening ?? gate.Setpoint) open</dd></div>
+                }
+            </dl>
+            @if (tank.Overflowing)
+            {
+                <p class="card-flag bad">Spilling now</p>
+            }
+            <div class="card-actions">
+                @if (_view.Scenario.FrozenSensor?.Value == id)
+                {
+                    <button type="button" class="chip fault on" @onclick="() => SetSensorAsync(null)">Unfreeze</button>
+                }
+                else
+                {
+                    <button type="button" class="chip fault" disabled="@(!_view.Scenario.CanInjectFaults)" @onclick="() => SetSensorAsync(new TankId(id))">Freeze sensor</button>
+                }
+            </div>
+        }
+        else if (valve is { Shape.Controlled: true })
+        {
+            var stuck = _view.Scenario.StuckGate?.Value == id;
+            <p class="card-kind">Controlled gate</p>
+            <h2>@LiveStory.Plain(id) <small>outlet of @LiveStory.Plain(valve.Shape.Tank)</small></h2>
+            <p class="card-text">Solid plate: where it is. Outline: where the PLC wants it.</p>
+            <dl class="card-facts">
+                <div><dt>Controller asks</dt><dd>@Fmt.Percent(valve.Setpoint) open</dd></div>
+                <div class="@(valve.Alarm is { Active: true } ? "warn" : null)"><dt>Gate is at</dt><dd>@Fmt.Percent(valve.Opening) open</dd></div>
+            </dl>
+            @if (valve.Alarm is { Active: true })
+            {
+                <p class="card-flag bad">SCADA alarm: gate stuck</p>
+            }
+            <div class="card-actions">
+                @if (stuck)
+                {
+                    <button type="button" class="chip fault on" @onclick="() => SetGateAsync(null)">Free gate</button>
+                }
+                else
+                {
+                    <button type="button" class="chip fault" disabled="@(!_view.Scenario.CanInjectFaults)" @onclick="() => SetGateAsync(new GateId(id))">Jam gate</button>
+                }
+            </div>
+        }
+        else if (weir is not null)
+        {
+            <p class="card-kind">Overflow structure</p>
+            <h2>@LiveStory.Plain(id)</h2>
+            <p class="card-text">No tank here: when the sewer is full, it spills.</p>
+            <dl class="card-facts">
+                <div><dt>Spilled here</dt><dd>@Fmt.Volume(spilled ?? 0)</dd></div>
+                <div><dt>Now</dt><dd>@(weir.Overflowing ? "spilling" : "not spilling")</dd></div>
+            </dl>
+        }
+        else if (id == "wwtp")
+        {
+            <p class="card-kind">Treatment plant</p>
+            <h2>Treatment plant</h2>
+            <p class="card-text">Everything that gets here is cleaned, not spilled.</p>
+            <dl class="card-facts">
+                <div><dt>Cleaned</dt><dd>@Fmt.Volume(_view.Kpi.WwtpInflow)</dd></div>
+            </dl>
+        }
+        else if (id == "plc")
+        {
+            <p class="card-kind">Controller</p>
+            <h2>PLC</h2>
+            <p class="card-text">Real controller code (IEC 61131-3, OpenPLC, Modbus). Every answer is checked.</p>
+            <dl class="card-facts">
+                <div><dt>Control</dt><dd>@Fmt.Mode(_view.ModeActive, _view.Algorithm)</dd></div>
+                <div><dt>Answers checked</dt><dd>@Fmt.Count(_view.Scenario.Step), @(_view.Scenario.Mismatches == 0 ? "all correct" : $"{Fmt.Count(_view.Scenario.Mismatches)} wrong")</dd></div>
+                @if (LiveFrame.LocalFallback(_view))
+                {
+                    <div class="warn"><dt>Now</dt><dd>on its own</dd></div>
+                }
+            </dl>
+        }
+        else if (id == "center")
+        {
+            var link = LiveFrame.LinkState(_view);
+            <p class="card-kind">Control room</p>
+            <h2>SCADA</h2>
+            <p class="card-text">Watches everything, raises alarms, proposes gate settings.</p>
+            <dl class="card-facts">
+                <div class="@(link is "cut" or "lost" ? "warn" : null)"><dt>Link to PLC</dt><dd>@(link switch { "up" => "up", "cut" => "cut", "lost" => "lost", _ => "not used" })</dd></div>
+                <div><dt>Open alarms</dt><dd>@_view.Alarms.Count(a => a.Active)</dd></div>
+            </dl>
+            <div class="card-actions">
+                <button type="button" class="chip fault @(_view.Scenario.CenterLinkCut ? "on" : null)" disabled="@(!_view.Scenario.CanInjectFaults)" @onclick="ToggleLinkAsync">
+                    @(_view.Scenario.CenterLinkCut ? "Fix link" : "Cut link")
+                </button>
+                <a class="chip" href="operator">Operator screen</a>
+            </div>
+        }
+        else if (id == "river")
+        {
+            var total = _view.Kpi.Total;
+            <p class="card-kind">Receiving water</p>
+            <h2>River</h2>
+            <p class="card-text">Brown plumes grow with every spill.</p>
+            <dl class="card-facts">
+                <div><dt>Spilled</dt><dd>@Fmt.Volume(total)</dd></div>
+            </dl>
+        }
+        else
+        {
+            <h2>@LiveStory.Plain(id)</h2>
+            <p class="card-text">Fixed outlet, not controlled.</p>
+        }
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        await _stop.CancelAsync();
+        _stop.Dispose();
+        try
+        {
+            if (_scene is not null)
+            {
+                await _scene.InvokeVoidAsync("dispose");
+                await _scene.DisposeAsync();
+            }
+            if (_module is not null)
+            {
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        _self?.Dispose();
+    }
+}

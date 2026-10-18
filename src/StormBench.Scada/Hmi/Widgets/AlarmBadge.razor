@@ -1,0 +1,14 @@
+<svg class="alarm-badge @Classes" viewBox="-130 -130 260 260" role="img" aria-label="@Label">
+    <AlarmShape Priority="Priority" />
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public AlarmPriority Priority { get; set; }
+
+    /// <summary>Active or returned to normal; unacknowledged alarms blink.</summary>
+    [Parameter] public Alarm? Alarm { get; set; }
+
+    private string Classes => AlarmCss.Classes(Priority, Alarm);
+
+    private string Label => $"Priority {(int)Priority}";
+}

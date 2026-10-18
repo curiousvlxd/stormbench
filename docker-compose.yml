@@ -1,0 +1,33 @@
+name: stormbench
+
+services:
+  plc:
+    build:
+      context: plc
+      args:
+        TASK_INTERVAL: ${TASK_INTERVAL:-T#1ms}
+    image: stormbench/plc:dev
+    init: true                          # bash is PID 1 in the runtime image; clean and fast stop
+    cap_add: [SYS_NICE, SYS_RESOURCE]   # real-time scheduling and memory locking in the runtime
+    ports: ["127.0.0.1:1502:502"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/502"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+      start_period: 5s
+
+  simulator:
+    build:
+      context: .
+      dockerfile: simulator/Dockerfile
+    image: stormbench/simulator:dev
+    depends_on:
+      plc: { condition: service_healthy }
+    volumes:
+      - ./models/astlingen:/app/models/astlingen
+      - ./results:/app/results
+    entrypoint: ["sh", "-c"]
+    command:
+      - python /app/models/fetch_astlingen.py --dest /app/models/astlingen
+        && python -m stormbench_sim demo --plc-host plc --plc-port 502

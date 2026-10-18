@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" data-ix-theme="classic" data-ix-color-schema="light">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <base href="/" />
+    <title>StormBench</title>
+    <link rel="icon" href="@Assets["favicon.svg"]" type="image/svg+xml" />
+    <link rel="preload" href="fonts/SourceSans3-Variable.ttf" as="font" type="font/ttf" crossorigin />
+    <script src="@Assets["theme.js"]"></script>
+    <ResourcePreloader />
+    <link rel="stylesheet" href="_content/Siemens.IX.Blazor/css/siemens-ix/siemens-ix.css" />
+    <link rel="stylesheet" href="@Assets["hmi.css"]" />
+    <link rel="stylesheet" href="@Assets["live.css"]" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveNoPrerender" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveNoPrerender" />
+    <ReconnectModal />
+    <script src="_content/Siemens.IX.Blazor/js/siemens-ix/index.bundle.js"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>
+
+@code {
+    /// <summary>
+    /// The iX web components rearrange their own markup when they load, which a prerendered page
+    /// handed over to the interactive renderer does not survive: render interactively only.
+    /// </summary>
+    private static readonly IComponentRenderMode InteractiveNoPrerender = new InteractiveServerRenderMode(prerender: false);
+}
