@@ -56,6 +56,39 @@ jobs:
       - if: always()
         run: docker compose logs plc | tail -50 && docker compose down
 
+  live-3d:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: src/StormBench.Live
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/StormBench.Live/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx prettier --check .
+      - run: npm test
+      - run: npm run build
+
+  models:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: assets/models
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: assets/models/package-lock.json
+      - run: npm ci
+      - run: npm run validate
+
   dotnet:
     runs-on: ubuntu-24.04
     steps:
@@ -63,6 +96,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/StormBench.Live/package-lock.json
       - run: dotnet build StormBench.slnx -c Release
       - run: dotnet test StormBench.slnx -c Release --no-build
 
@@ -76,6 +114,6 @@ jobs:
           path: models/astlingen
           key: astlingen-e226b03
       - run: python3 models/fetch_astlingen.py
-      - run: docker compose -f docker-compose.uns.yml --profile check up --build --exit-code-from check
+      - run: docker compose -f compose.uns.yaml --profile check up --build --exit-code-from check
       - if: always()
-        run: docker compose -f docker-compose.uns.yml --profile check logs connectivity scada simulator | tail -120 && docker compose -f docker-compose.uns.yml --profile check down
+        run: docker compose -f compose.uns.yaml --profile check logs connectivity scada simulator | tail -120 && docker compose -f compose.uns.yaml --profile check down
