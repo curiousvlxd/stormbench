@@ -28,6 +28,6 @@ public static class AlarmCss
         AlarmState.Unacknowledged => "Active, unacknowledged",
         AlarmState.Acknowledged => "Active, acknowledged",
         AlarmState.ReturnedUnacknowledged => "Cleared, unacknowledged",
-        _ => "Normal",
+        _ => "Normal"
     };
 }

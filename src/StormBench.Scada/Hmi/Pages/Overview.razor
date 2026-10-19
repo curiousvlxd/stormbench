@@ -1,4 +1,4 @@
-@page "/operator"
+@page "/benchmarks/astlingen/operator"
 @implements IAsyncDisposable
 @inject HmiFeed Feed
 @inject AcknowledgeAlarmHandler Acknowledgement
@@ -12,7 +12,8 @@
     <AlarmBanner Alarms="_view.Alarms" OnAcknowledgeAll="AcknowledgeAll" />
 
     <main class="hmi-main">
-        <div class="main-col">
+        <KpiTiles Kpi="_view.Kpi" Status="_view.Scenario" />
+
         <section class="panel overview" aria-labelledby="overview-title">
             <header class="panel-head">
                 <h2 id="overview-title">Drainage network</h2>
@@ -42,14 +43,9 @@
                 <p class="muted diagram-empty">The network appears when the simulator (Sim01) publishes its model.</p>
             }
         </section>
+
+        <ScenarioPanel Status="_view.Scenario" Network="_view.Site.Network" />
         <TrendChart Trend="_view.Trend" Storm="_view.Storm" />
-        </div>
-
-        <aside class="side">
-            <ScenarioPanel Status="_view.Scenario" Network="_view.Site.Network" />
-            <KpiTiles Kpi="_view.Kpi" Status="_view.Scenario" />
-        </aside>
-
         <AlarmList Alarms="_view.Alarms" OnAcknowledge="Acknowledge" />
     </main>
 </div>
@@ -71,7 +67,7 @@
                 return null;
             }
             return _view.Scenario.CenterLinkCut ? ("cut, PLC runs locally", true)
-                : _view.Scenario.CenterLinkUp == false ? ("lost, PLC runs locally", true)
+                : _view.Scenario.CenterLinkUp is false ? ("lost, PLC runs locally", true)
                 : _view.PlcFallback ? ("PLC runs locally", true)
                 : ("up", false);
         }

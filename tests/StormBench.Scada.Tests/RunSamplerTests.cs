@@ -4,7 +4,7 @@ using StormBench.Application.Runs;
 using StormBench.Contracts;
 using StormBench.Domain.Runs;
 using StormBench.Infrastructure.VictoriaMetrics;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 

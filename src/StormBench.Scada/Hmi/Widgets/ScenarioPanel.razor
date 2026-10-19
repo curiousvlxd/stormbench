@@ -20,45 +20,56 @@
         var algorithm = catalog.Algorithm(Algorithm(catalog)) ?? catalog.Algorithms[0];
         var locked = Status.Busy || _pending;
         <div class="field">
-            <Select Id="console-storm" Label="Storm" Value="@storm.Id.Value" Disabled="locked" ValueChangeEvent="OnStormChanged">
+            <label class="field-label" for="console-storm">Storm</label>
+            <select id="console-storm" class="select" disabled="@locked" value="@storm.Id.Value" @onchange="OnStormChanged">
                 @foreach (var option in catalog.Storms)
                 {
-                    <SelectItem Id="@($"storm-{option.Id}")" Label="@option.Label" Value="@option.Id.Value" />
+                    <option value="@option.Id.Value">@option.Label</option>
                 }
-            </Select>
+            </select>
             <p class="hint">@storm.Description. @Fmt.Count(storm.Steps) steps of 5 min.</p>
         </div>
 
-        <div class="field">
-            <RadioGroup Id="console-algorithm" Label="Control" Value="@algorithm.Id.Value" Direction="RadioGroupDirection.Column" ValueChangeEvent="OnAlgorithmChanged">
+        <fieldset class="field">
+            <legend class="field-label">Control</legend>
+            <div class="choices">
                 @foreach (var option in catalog.Algorithms)
                 {
-                    <SiemensIXBlazor.Components.Radio.Radio Id="@($"algorithm-{option.Id}")" Name="console-algorithm" Label="@option.Label" Value="@option.Id.Value"
-                                                             Checked="@(option.Id == algorithm.Id)" Disabled="locked" />
+                    var id = option.Id;
+                    var on = id == algorithm.Id;
+                    <label class="choice @(on ? "selected" : null)">
+                        <input type="radio" name="console-algorithm" value="@id.Value" checked="@on" disabled="@locked" @onchange="() => _algorithm = id" />
+                        <span class="choice-label">@option.Label</span>
+                    </label>
                 }
-            </RadioGroup>
+            </div>
             <p class="hint">@algorithm.Description.</p>
-        </div>
+        </fieldset>
 
         <div class="field">
             <span class="field-label" id="console-speed">Speed, control steps per second</span>
-            <div class="speed-row" role="group" aria-labelledby="console-speed">
+            <div class="segmented" role="group" aria-labelledby="console-speed">
                 @foreach (var pace in catalog.Paces)
                 {
                     var selected = Math.Abs(pace - Pace(catalog)) < 1e-9;
                     var value = pace;
-                    <ToggleButton Id="@($"pace-{Fmt.Pace(pace).Replace('/', '-')}")" Pressed="selected" Disabled="locked"
-                                  Variant="ToggleButtonVariant.subtle_secondary" PressedChangeEvent="_ => _pace = value">
+                    <button type="button" class="@(selected ? "on" : null)" aria-pressed="@(selected ? "true" : "false")" disabled="@locked" @onclick="() => _pace = value">
                         @Fmt.Pace(pace)
-                    </ToggleButton>
+                    </button>
                 }
             </div>
             <p class="hint">@Fmt.PaceHint(Pace(catalog), 300).</p>
         </div>
 
         <div class="actions">
-            <Button Id="console-start" Variant="ButtonVariant.primary" Icon="play" Disabled="@(!Status.CanStart || _pending)" ClickEvent="() => StartAsync(catalog)">Start storm</Button>
-            <Button Id="console-stop" Variant="ButtonVariant.secondary" Icon="stop" Disabled="@(!Status.CanStop || _pending)" ClickEvent="StopAsync">Stop</Button>
+            <button type="button" id="console-start" class="button primary" disabled="@(!Status.CanStart || _pending)" @onclick="() => StartAsync(catalog)">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="filled" d="M8 5v14l11-7z" /></svg>
+                Start storm
+            </button>
+            <button type="button" id="console-stop" class="button" disabled="@(!Status.CanStop || _pending)" @onclick="StopAsync">
+                <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><rect class="filled" x="6.5" y="6.5" width="11" height="11" rx="2" /></svg>
+                Stop
+            </button>
         </div>
     }
 
@@ -67,10 +78,10 @@
     <div class="faults">
         <h3 class="field-label">Faults</h3>
         <div class="field">
-            <Button Id="fault-center-link" Variant="@(Status.CenterLinkCut ? ButtonVariant.danger_primary : ButtonVariant.secondary)"
-                    Disabled="@(!Status.CanInjectFaults || _faultPending)" ClickEvent="ToggleCenterLinkAsync">
+            <button type="button" id="fault-center-link" class="button fault @(Status.CenterLinkCut ? "active" : null)"
+                    disabled="@(!Status.CanInjectFaults || _faultPending)" @onclick="ToggleCenterLinkAsync">
                 @(Status.CenterLinkCut ? "Restore link to center" : "Cut link to center")
-            </Button>
+            </button>
             <p class="hint">
                 @(Status.CenterLinkCut
                     ? "Link cut: with proposals from the center the PLC stations run locally."
@@ -80,22 +91,28 @@
         @if (Network is { } network)
         {
             <div class="field fault-pair">
-                <Select Id="fault-stuck-gate" Label="Stuck gate" Value="@(Status.StuckGate?.Value ?? NoFault)" Disabled="@(!Status.CanInjectFaults || _faultPending)"
-                        ValueChangeEvent="OnStuckGateChanged">
-                    <SelectItem Id="gate-none" Label="None" Value="@NoFault" />
-                    @foreach (var station in network.Stations)
-                    {
-                        <SelectItem Id="@($"gate-{station.Gate}")" Label="@($"{station.Gate} (tank {station.Tank})")" Value="@station.Gate.Value" />
-                    }
-                </Select>
-                <Select Id="fault-frozen-sensor" Label="Frozen level sensor" Value="@(Status.FrozenSensor?.Value ?? NoFault)" Disabled="@(!Status.CanInjectFaults || _faultPending)"
-                        ValueChangeEvent="OnFrozenSensorChanged">
-                    <SelectItem Id="sensor-none" Label="None" Value="@NoFault" />
-                    @foreach (var tank in network.Tanks)
-                    {
-                        <SelectItem Id="@($"sensor-{tank}")" Label="@tank.Value" Value="@tank.Value" />
-                    }
-                </Select>
+                <div>
+                    <label class="field-label" for="fault-stuck-gate">Stuck gate</label>
+                    <select id="fault-stuck-gate" class="select" value="@(Status.StuckGate?.Value ?? NoFault)" disabled="@(!Status.CanInjectFaults || _faultPending)"
+                            @onchange="OnStuckGateChanged">
+                        <option value="@NoFault">None</option>
+                        @foreach (var station in network.Stations)
+                        {
+                            <option value="@station.Gate.Value">@station.Gate (tank @station.Tank)</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="field-label" for="fault-frozen-sensor">Frozen level sensor</label>
+                    <select id="fault-frozen-sensor" class="select" value="@(Status.FrozenSensor?.Value ?? NoFault)" disabled="@(!Status.CanInjectFaults || _faultPending)"
+                            @onchange="OnFrozenSensorChanged">
+                        <option value="@NoFault">None</option>
+                        @foreach (var tank in network.Tanks)
+                        {
+                            <option value="@tank.Value">@tank</option>
+                        }
+                    </select>
+                </div>
             </div>
             <p class="hint">A stuck gate ignores the PLC; a frozen sensor feeds it an old level. Scada notices both from position feedback and a level that stops moving.</p>
         }
@@ -149,27 +166,16 @@
         }
     }
 
-    private void OnStormChanged(object? value) => _storm = Single(value) is { } storm ? new StormId(storm) : _storm;
+    private void OnStormChanged(ChangeEventArgs e) => _storm = e.Value as string is { Length: > 0 } storm ? new StormId(storm) : _storm;
 
-    private void OnAlgorithmChanged(string value) => _algorithm = new AlgorithmId(value);
+    private Task OnStuckGateChanged(ChangeEventArgs e) =>
+        RunFaultCommandAsync(() => Jam.HandleAsync(new JamGate(Target(e) is { } gate ? new GateId(gate) : null), CancellationToken.None));
 
-    private Task OnStuckGateChanged(object? value) =>
-        RunFaultCommandAsync(() => Jam.HandleAsync(new JamGate(Target(value) is { } gate ? new GateId(gate) : null), CancellationToken.None));
-
-    private Task OnFrozenSensorChanged(object? value) =>
-        RunFaultCommandAsync(() => Freeze.HandleAsync(new FreezeSensor(Target(value) is { } tank ? new TankId(tank) : null), CancellationToken.None));
+    private Task OnFrozenSensorChanged(ChangeEventArgs e) =>
+        RunFaultCommandAsync(() => Freeze.HandleAsync(new FreezeSensor(Target(e) is { } tank ? new TankId(tank) : null), CancellationToken.None));
 
     /// <summary>The fault target picked, or null for none.</summary>
-    private static string? Target(object? value) => Single(value) is { Length: > 0 } target and not NoFault ? target : null;
-
-    /// <summary>iX select reports a string, or a string array in multiple mode.</summary>
-    private static string? Single(object? value) => value switch
-    {
-        string s => s,
-        string[] { Length: > 0 } a => a[0],
-        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } e => e.GetString(),
-        _ => value?.ToString(),
-    };
+    private static string? Target(ChangeEventArgs e) => e.Value as string is { Length: > 0 } target and not NoFault ? target : null;
 
     private async Task StartAsync(ScenarioCatalog catalog)
     {

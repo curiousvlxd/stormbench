@@ -2,7 +2,7 @@ using StormBench.Application.Kpi;
 using StormBench.Contracts;
 using StormBench.Domain.Kpi;
 using StormBench.Domain.Network;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 
@@ -16,7 +16,7 @@ public class OverflowKpiTests
         {
             SparkplugMetric.Int64(SimMetrics.Run, 1),
             SparkplugMetric.Double(SimMetrics.OverflowTotal, total),
-            SparkplugMetric.Double(SimMetrics.WwtpInflow, 48_976.7),
+            SparkplugMetric.Double(SimMetrics.WwtpInflow, 48_976.7)
         };
         if (baseCase is { } b)
         {

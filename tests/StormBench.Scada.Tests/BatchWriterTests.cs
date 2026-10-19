@@ -28,7 +28,7 @@ public class BatchWriterTests
             "test",
             (batch, _) =>
             {
-                if (calls++ == 0)
+                if (calls++ is 0)
                 {
                     throw new HttpRequestException("store down");
                 }
@@ -56,7 +56,7 @@ public class BatchWriterTests
             (batch, _) =>
             {
                 batches.Add(batch.Count);
-                if (batches.Sum() == 10)
+                if (batches.Sum() is 10)
                 {
                     done.SetResult();
                 }

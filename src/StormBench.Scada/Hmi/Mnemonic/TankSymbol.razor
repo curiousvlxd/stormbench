@@ -2,25 +2,43 @@
     var s = View.Shape;
     var x0 = s.Center.X - (s.Width / 2);
     var y0 = s.Center.Y - (s.Height / 2);
-    var water = s.Height * (View.Fill ?? 0);
+    var x1 = x0 + s.Width;
+    var inset = DiagramLayout.TankWall / 2;
+    var level = y0 + s.Height - inset - ((s.Height - (2 * inset)) * (View.Fill ?? 0));
     var threshold = y0 + s.Height - (s.Height * ThresholdDepth / MaxDepth);
+    var clip = $"tank-inside-{s.Id}";
 }
 <g class="@Css">
     <title>@Tooltip</title>
-    <rect class="tank-body" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" />
-    <rect class="tank-water" x="@Svg.N(x0)" y="@Svg.N(y0 + s.Height - water)" width="@Svg.N(s.Width)" height="@Svg.N(water)" />
-    <line class="tank-threshold" x1="@Svg.N(x0)" x2="@Svg.N(x0 + 90)" y1="@Svg.N(threshold)" y2="@Svg.N(threshold)" />
-    <rect class="tank-outline" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" />
+    <defs>
+        <clipPath id="@clip">
+            <rect x="@Svg.N(x0 + inset)" y="@Svg.N(y0 + inset)" width="@Svg.N(s.Width - (2 * inset))" height="@Svg.N(s.Height - (2 * inset))" rx="@Svg.N(DiagramLayout.TankRadius - inset)" />
+        </clipPath>
+    </defs>
+    @if (View.Overflowing)
+    {
+        <rect class="halo" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" rx="@Svg.N(DiagramLayout.TankRadius)" />
+    }
+    <rect class="tank-lid" x="@Svg.N(s.Center.X - (DiagramLayout.LidWidth / 2))" y="@Svg.N(y0 - DiagramLayout.LidHeight + 14)" width="@Svg.N(DiagramLayout.LidWidth)" height="@Svg.N(DiagramLayout.LidHeight)" rx="22" />
+    <rect class="tank-body" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" rx="@Svg.N(DiagramLayout.TankRadius)" />
+    @if (View.Fill is > 0.002)
+    {
+        <g clip-path="url(#@clip)">
+            <path class="tank-water" d="@Water(x0, x1, level, y0 + s.Height)" />
+            <path class="tank-surface" d="@Surface(x0, x1, level)" />
+        </g>
+    }
+    <line class="tank-threshold" x1="@Svg.N(x0 + inset)" x2="@Svg.N(x0 + 90)" y1="@Svg.N(threshold)" y2="@Svg.N(threshold)" />
+    <rect class="tank-outline" x="@Svg.N(x0)" y="@Svg.N(y0)" width="@Svg.N(s.Width)" height="@Svg.N(s.Height)" rx="@Svg.N(DiagramLayout.TankRadius)" />
     @if (View.TrueFill is { } real)
     {
         var realY = y0 + s.Height - (s.Height * real);
-        <line class="tank-true-level" x1="@Svg.N(x0 - 40)" x2="@Svg.N(x0 + s.Width + 40)" y1="@Svg.N(realY)" y2="@Svg.N(realY)" />
+        <line class="tank-true-level" x1="@Svg.N(x0 - 40)" x2="@Svg.N(x1 + 40)" y1="@Svg.N(realY)" y2="@Svg.N(realY)" />
         <g><text class="value-true" x="@Svg.N(s.Values.X)" y="@Svg.N(s.Values.Y + (2 * DiagramLayout.LineGap))" text-anchor="@s.Values.Anchor">real @Fmt.Percent(real)</text></g>
     }
     @if (View.Overflowing)
     {
-        <path class="spill" d="M @Svg.N(s.Center.X + 60) @Svg.N(y0 - 20) q 90 -170 300 -190" />
-        <path class="spill-head" d="M @Svg.N(s.Center.X + 360) @Svg.N(y0 - 210) l -120 -55 l 25 120 z" />
+        <SpillBadge X="@(x1 - (DiagramLayout.TankRadius * 0.25))" Y="@(y0 + (DiagramLayout.TankRadius * 0.25))" />
     }
     <text class="tag" x="@Svg.N(s.Tag.X)" y="@Svg.N(s.Tag.Y)" text-anchor="middle">@s.Id</text>
     <text class="value" x="@Svg.N(s.Values.X)" y="@Svg.N(s.Values.Y)" text-anchor="@s.Values.Anchor">@LevelText</text>
@@ -38,6 +56,9 @@
     /// <summary>EFD treats tanks below this depth as empty enough (1 m in Astlingen).</summary>
     [Parameter] public double ThresholdDepth { get; set; } = 1.0;
 
+    private const double Wave = 16;
+    private const int Crests = 2;
+
     private string Css => "tank" + (View.Stale ? " stale" : "") + (View.Overflowing ? " overflowing" : "");
 
     /// <summary>Stale values keep their last reading, marked with a question mark.</summary>
@@ -48,4 +69,20 @@
         + (View.Stale ? ", value stale" : "")
         + (View.TrueFill is { } real ? $", sensor frozen, real level {Fmt.Percent(real)}" : "")
         + (View.Overflowing ? ", overflowing" : "");
+
+    /// <summary>The water's surface, a gentle wave as in the StormBench mark, from wall to wall.</summary>
+    private static string Surface(double x0, double x1, double level)
+    {
+        var step = (x1 - x0) / (Crests * 2);
+        var d = new System.Text.StringBuilder($"M {Svg.N(x0)} {Svg.N(level)}");
+        for (var i = 0; i < Crests * 2; i++)
+        {
+            var up = i % 2 is 0 ? -Wave : Wave;
+            d.Append($" q {Svg.N(step / 2)} {Svg.N(up * 2)} {Svg.N(step)} 0");
+        }
+        return d.ToString();
+    }
+
+    private static string Water(double x0, double x1, double level, double bottom) =>
+        $"{Surface(x0, x1, level)} L {Svg.N(x1)} {Svg.N(bottom)} L {Svg.N(x0)} {Svg.N(bottom)} Z";
 }

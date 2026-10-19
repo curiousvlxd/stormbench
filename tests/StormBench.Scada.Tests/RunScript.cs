@@ -1,5 +1,5 @@
 using StormBench.Contracts;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 

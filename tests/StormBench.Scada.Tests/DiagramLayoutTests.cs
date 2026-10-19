@@ -17,7 +17,7 @@ public class DiagramLayoutTests
     [Fact]
     public void Map_y_axis_points_down_and_everything_fits_the_canvas()
     {
-        var t1 = Layout.Tanks.Single(t => t.Id == "T1");
+        var t1 = Layout.Tanks.Single(t => t.Id is "T1");
         var weir = Layout.Weirs.Single();
         Assert.True(weir.Center.Y < t1.Center.Y, "CSO1 lies north of T1 in the model, so above it on screen");
         Assert.All(Layout.Tanks, t => Assert.InRange(t.Center.X, 0, Layout.Width));
@@ -27,25 +27,25 @@ public class DiagramLayoutTests
     [Fact]
     public void Overflow_structure_too_close_to_a_tank_is_moved_clear_and_its_pipe_follows()
     {
-        var t1 = Layout.Tanks.Single(t => t.Id == "T1");
+        var t1 = Layout.Tanks.Single(t => t.Id is "T1");
         var weir = Layout.Weirs.Single();
 
         var tankBox = Rect.Around(t1.Center, t1.Width, t1.Height);
         var weirBox = Rect.Around(weir.Center, DiagramLayout.WeirSize, DiagramLayout.WeirSize);
         Assert.False(tankBox.Overlaps(weirBox));
-        Assert.Equal(weir.Center, Layout.Pipes.Single(p => p.Id == "C2").From);
+        Assert.Equal(weir.Center, Layout.Pipes.Single(p => p.Id is "C2").From);
     }
 
     [Fact]
     public void Tank_outlets_become_valves_on_their_pipes_controlled_or_fixed()
     {
-        var v2 = Layout.Valves.Single(v => v.Id == "V2");
-        var v1 = Layout.Valves.Single(v => v.Id == "V1");
+        var v2 = Layout.Valves.Single(v => v.Id is "V2");
+        var v1 = Layout.Valves.Single(v => v.Id is "V1");
 
         Assert.True(v2.Controlled);
         Assert.False(v1.Controlled);
         Assert.Equal("T2", v2.Tank);
-        var t2 = Layout.Tanks.Single(t => t.Id == "T2");
+        var t2 = Layout.Tanks.Single(t => t.Id is "T2");
         Assert.False(Rect.Around(t2.Center, t2.Width, t2.Height).Overlaps(Rect.Around(v2.Center, 200, 156)));
         Assert.Equal(0, v2.AngleDegrees, 6);
     }
@@ -91,7 +91,7 @@ public class DiagramLayoutTests
         {
             "end" => spot.X - width,
             "middle" => spot.X - (width / 2),
-            _ => spot.X,
+            _ => spot.X
         };
         return new Rect(left, spot.Y - size, left + width, spot.Y + DiagramLayout.LineGap);
     }

@@ -1,7 +1,7 @@
 using StormBench.Application.Historian;
 using StormBench.Contracts;
 using StormBench.Domain.Scenarios;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 
@@ -66,7 +66,7 @@ public class RunTrendTests
         NewRun(1);
         for (var k = 1; k <= 10; k++)
         {
-            Step(k, k == 3 ? 30.0 : 1.0, k * 10, k * 11);
+            Step(k, k is 3 ? 30.0 : 1.0, k * 10, k * 11);
         }
 
         var series = _trend.Read(5);

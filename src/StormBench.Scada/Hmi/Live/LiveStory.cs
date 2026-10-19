@@ -88,7 +88,7 @@ public static partial class LiveStory
                 {
                     lines.Add(view.Rain is > 0.05 and var rain
                         ? new($"Raining {rain.ToString("0.0", CultureInfo.InvariantCulture)} mm/h: tanks filling", Tone.Info)
-                        : new("Dry: tanks emptying", Tone.Info));
+                        : new("No rain: only the town's sewage flows", Tone.Info));
                 }
                 break;
             case ScenarioState.Finished:
@@ -119,7 +119,7 @@ public static partial class LiveStory
             Comparison.Same when kpi.Total < OverflowKpi.NoOverflow =>
                 new($"{prefix}nothing spilled", Tone.Good),
             Comparison.Same => new($"{prefix}same as no control", Tone.Info),
-            _ => new($"{prefix}no comparison", Tone.Info),
+            _ => new($"{prefix}no comparison", Tone.Info)
         };
     }
 
@@ -152,7 +152,7 @@ public static partial class LiveStory
         {
             "T" => "Tank",
             "CSO" => "Overflow",
-            _ => "Gate",
+            _ => "Gate"
         };
         return $"{kind} {m.Groups[2].Value}";
     }
@@ -165,7 +165,7 @@ public static partial class LiveStory
             0 => "",
             1 => list[0],
             2 => $"{list[0]} and {list[1]}",
-            _ => $"{string.Join(", ", list.Take(list.Count - 1))} and {list[^1]}",
+            _ => $"{string.Join(", ", list.Take(list.Count - 1))} and {list[^1]}"
         };
     }
 

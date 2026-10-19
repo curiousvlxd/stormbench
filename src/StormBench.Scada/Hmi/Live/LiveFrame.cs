@@ -16,7 +16,8 @@ public sealed record LiveWeir(string Id, bool Overflowing, string? Alarm);
 /// What the 3D view needs at one moment, sent to the browser on every change.
 /// Link: "unused" (the PLC does not ask the center), "up", "cut" (by the console) or "lost".
 /// Plc: "online", "offline" or "waiting"; PlcLocal: the stations run on their own although the
-/// center is asked (mode 3 fallback).
+/// center is asked (mode 3 fallback). Hour: the time of day of the simulated clock, in hours, so the
+/// town can have its day and night.
 /// </summary>
 public sealed record LiveFrame(
     bool Running,
@@ -28,7 +29,8 @@ public sealed record LiveFrame(
     double? Wwtp,
     string Link,
     string Plc,
-    bool PlcLocal)
+    bool PlcLocal,
+    double? Hour)
 {
     public static LiveFrame From(HmiView view)
     {
@@ -54,7 +56,8 @@ public sealed record LiveFrame(
             view.Kpi.WwtpInflow?.CubicMeters,
             LinkState(view),
             site.Plc switch { Presence.Online => "online", Presence.Offline => "offline", _ => "waiting" },
-            LocalFallback(view));
+            LocalFallback(view),
+            view.Scenario.Clock?.TimeOfDay.TotalHours);
     }
 
     /// <summary>The PLC is asked to take the center's proposals (mode 3) and runs its stations locally instead.</summary>
@@ -83,7 +86,7 @@ public sealed record LiveFrame(
         {
             AlarmPriority.High => "high",
             AlarmPriority.Medium => "medium",
-            _ => "low",
+            _ => "low"
         }
         : null;
 }

@@ -1,4 +1,4 @@
-@page "/"
+@page "/benchmarks/astlingen"
 @using StormBench.Scada.Hmi.Live
 @implements IAsyncDisposable
 @inject HmiFeed Feed
@@ -24,13 +24,16 @@
 
     <header class="live-top glass">
         <div class="live-brand">
-            <img class="live-logo" src="live/assets/logo.svg" alt="" width="24" height="24" />
-            <span class="live-title">StormBench</span>
-            <span class="live-bench" title="The benchmark this run uses">Astlingen</span>
+            <a class="live-brand" href="" title="All benchmarks">
+                <img class="live-logo" src="live/assets/logo.svg" alt="" width="24" height="24" />
+                <span class="live-title">StormBench</span>
+            </a>
+            <a class="live-crumb" href="" title="All benchmarks">Benchmarks</a>
+            <span class="live-bench" title="The benchmark this sandbox runs">Astlingen</span>
         </div>
         <nav class="live-tabs" aria-label="Views">
-            <a class="live-tab active" href="" aria-current="page">Live 3D</a>
-            <a class="live-tab" href="operator">Operator SCADA</a>
+            <a class="live-tab active" href="benchmarks/astlingen" aria-current="page">Live 3D</a>
+            <a class="live-tab" href="benchmarks/astlingen/operator">Operator SCADA</a>
         </nav>
         <div class="live-clock">
             @if (_view.Scenario.Clock is { } clock)
@@ -71,7 +74,7 @@
         <div class="live-chapter" @key="chapter.Title" @onclick="DismissChapter" aria-live="polite">
             <span class="chapter-step">@chapter.Number / @chapter.Of</span>
             <h2>@chapter.Title</h2>
-            <p class="@(chapter.Subtitle == "SCADA caught it" ? "caught" : null)">@chapter.Subtitle</p>
+            <p class="@(chapter.Subtitle is "SCADA caught it" ? "caught" : null)">@chapter.Subtitle</p>
         </div>
     }
 
@@ -79,7 +82,7 @@
         @{
             var kpi = _view.Kpi;
             var hasRun = _view.Scenario.Run > 0;
-            var isBase = _view.Scenario.Algorithm?.Value == "base";
+            var isBase = _view.Scenario.Algorithm?.Value is "base";
             var total = kpi.Total.CubicMeters;
             var baseCase = kpi.BaseCase?.CubicMeters;
             var scale = Math.Max(1.0, Math.Max(total, baseCase ?? 0));
@@ -141,7 +144,7 @@
             <div class="dock-group">
                 <span class="dock-label" id="live-control">Control</span>
                 <div class="chips" role="radiogroup" aria-labelledby="live-control">
-                    @foreach (var option in catalog.Algorithms.Where(a => a.Id.Value != "efd-plc-intended"))
+                    @foreach (var option in catalog.Algorithms.Where(a => a.Id.Value is not "efd-plc-intended"))
                     {
                         var id = option.Id;
                         var on = id == SelectedAlgorithm(catalog);
@@ -262,7 +265,7 @@
         if (firstRender)
         {
             _self = DotNetObjectReference.Create(this);
-            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./live/scene.js");
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./live/dist/scene.js");
         }
         await EnsureSceneAsync();
     }
@@ -699,7 +702,7 @@
                 <div><dt>Now</dt><dd>@(weir.Overflowing ? "spilling" : "not spilling")</dd></div>
             </dl>
         }
-        else if (id == "wwtp")
+        else if (id is "wwtp")
         {
             <p class="card-kind">Treatment plant</p>
             <h2>Treatment plant</h2>
@@ -708,7 +711,7 @@
                 <div><dt>Cleaned</dt><dd>@Fmt.Volume(_view.Kpi.WwtpInflow)</dd></div>
             </dl>
         }
-        else if (id == "plc")
+        else if (id is "plc")
         {
             <p class="card-kind">Controller</p>
             <h2>PLC</h2>
@@ -722,7 +725,7 @@
                 }
             </dl>
         }
-        else if (id == "center")
+        else if (id is "center")
         {
             var link = LiveFrame.LinkState(_view);
             <p class="card-kind">Control room</p>
@@ -736,10 +739,10 @@
                 <button type="button" class="chip fault @(_view.Scenario.CenterLinkCut ? "on" : null)" disabled="@(!_view.Scenario.CanInjectFaults)" @onclick="ToggleLinkAsync">
                     @(_view.Scenario.CenterLinkCut ? "Fix link" : "Cut link")
                 </button>
-                <a class="chip" href="operator">Operator screen</a>
+                <a class="chip" href="benchmarks/astlingen/operator">Operator screen</a>
             </div>
         }
-        else if (id == "river")
+        else if (id is "river")
         {
             var total = _view.Kpi.Total;
             <p class="card-kind">Receiving water</p>

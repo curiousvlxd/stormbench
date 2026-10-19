@@ -1,11 +1,15 @@
 <header class="statusbar">
     <div class="brand">
-        <span class="brand-site">Astlingen</span>
-        <span class="brand-display">Network overview</span>
+        <a class="brand-home" href="" title="All benchmarks">
+            <img class="brand-logo" src="live/assets/logo.svg" alt="" width="24" height="24" />
+            <span class="brand-name">StormBench</span>
+        </a>
+        <a class="brand-crumb" href="" title="All benchmarks">Benchmarks</a>
+        <span class="brand-bench" title="The benchmark this SCADA runs">Astlingen</span>
     </div>
     <nav class="view-tabs" aria-label="Views">
-        <a class="view-tab" href="">Live 3D</a>
-        <a class="view-tab active" href="operator" aria-current="page">Operator SCADA</a>
+        <a class="view-tab" href="benchmarks/astlingen">Live 3D</a>
+        <a class="view-tab active" href="benchmarks/astlingen/operator" aria-current="page">Operator SCADA</a>
     </nav>
     <div class="clock">
         <span class="clock-label">@(View.Scenario.Clock is null ? "No storm run yet" : "Simulated time")</span>
@@ -18,10 +22,10 @@
         @Comm("Sim01", "Simulator: EPA SWMM, the simulated field", View.Site.Sim)
     </ul>
     <button type="button" class="theme-toggle" @onclick="OnToggleTheme"
-            aria-label="@(Theme == "dark" ? "Switch to the light theme" : "Switch to the dark theme")"
-            title="@(Theme == "dark" ? "Light theme" : "Dark theme")">
+            aria-label="@(Theme is "dark" ? "Switch to the light theme" : "Switch to the dark theme")"
+            title="@(Theme is "dark" ? "Light theme" : "Dark theme")">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-            @if (Theme == "dark")
+            @if (Theme is "dark")
             {
                 <circle cx="12" cy="12" r="4.5" />
                 <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />

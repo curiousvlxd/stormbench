@@ -74,6 +74,7 @@
     position: absolute;
     top: 0;
     left: 0;
+    will-change: transform;
     display: flex;
     align-items: baseline;
     gap: 6px;
@@ -1028,12 +1029,10 @@ body.film-clean .live.film .l3d {
 
 .l3d.place.water .l3d-name {
     color: #0b6fb8;
-    font-style: italic;
 }
 
 .l3d.place.creek .l3d-name {
     color: #3f8f2a;
-    font-style: italic;
 }
 
 .l3d.place.area .l3d-name {
@@ -1046,4 +1045,398 @@ body.film-clean .live.film .l3d {
     color: #1d2733;
     pointer-events: none;
     font-size: 11.5px;
+}
+
+.bench {
+    overflow-y: auto;
+    background: linear-gradient(170deg, #ffffff 0%, #eef6fc 45%, #dceefa 100%);
+}
+
+.bench .bench-top {
+    position: sticky;
+    top: 12px;
+    left: auto;
+    right: auto;
+    z-index: 2;
+    margin: 12px 12px 0;
+    grid-template-columns: auto auto 1fr;
+}
+
+.bench a.bench-home,
+.bench a.bench-home:visited {
+    color: var(--l-ink);
+    text-decoration: none;
+}
+
+.bench-main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 24px 72px;
+}
+
+.bench-title {
+    margin: 0;
+    font-family: inherit;
+    font-size: 40px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.bench-lead {
+    max-width: 640px;
+    margin: 10px 0 32px;
+    color: var(--l-ink-2);
+    font-size: 17px;
+    line-height: 1.5;
+}
+
+.bench-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    overflow: hidden;
+    padding: 0;
+}
+
+.bench-shot {
+    display: block;
+    min-height: 100%;
+    background: #cfe5c0;
+}
+
+.bench-shot img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bench-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 28px 30px 26px;
+}
+
+.bench-kicker {
+    color: var(--l-accent);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.bench-name {
+    margin: -6px 0 0;
+    font-family: inherit;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.bench-text {
+    margin: 0;
+    color: var(--l-ink-2);
+    line-height: 1.5;
+}
+
+.bench-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 18px;
+    margin: 0;
+}
+
+.bench-facts div {
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(20, 45, 80, 0.04);
+}
+
+.bench-facts dt {
+    color: var(--l-ink-3);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.bench-facts dd {
+    margin: 2px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.bench-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.bench a.bench-open,
+.bench a.bench-open:visited {
+    display: inline-flex;
+    align-items: center;
+    color: var(--l-accent-ink);
+    text-decoration: none;
+}
+
+.bench a.live-ghost,
+.bench a.live-ghost:visited {
+    color: var(--l-ink);
+    text-decoration: none;
+}
+
+.bench-source {
+    margin: 0;
+    color: var(--l-ink-3);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.bench-source a,
+.bench-source a:visited {
+    color: var(--l-accent);
+}
+
+.bench-more {
+    margin: 22px 4px 0;
+    color: var(--l-ink-3);
+    font-size: 14px;
+}
+
+.live a.live-brand,
+.live a.live-brand:visited {
+    color: var(--l-ink);
+    text-decoration: none;
+}
+
+.live-crumb {
+    color: var(--l-ink-3);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 760px) {
+    .bench-card {
+        grid-template-columns: 1fr;
+    }
+
+    .bench-shot {
+        aspect-ratio: 16 / 9;
+    }
+
+    .bench-main {
+        padding: 36px 16px 56px;
+    }
+
+    .bench-title {
+        font-size: 32px;
+    }
+
+    .bench-body {
+        padding: 22px 18px;
+    }
+
+    .bench-facts {
+        grid-template-columns: 1fr;
+    }
+}
+
+.live a[href] {
+    text-decoration: none !important;
+}
+
+.live a.live-brand[href],
+.live a.live-brand[href]:hover {
+    color: var(--l-ink) !important;
+}
+
+.live a.live-crumb[href] {
+    color: var(--l-ink-3) !important;
+}
+
+.live a.live-crumb[href]:hover {
+    color: var(--l-ink) !important;
+}
+
+.live .live-tabs a.live-tab[href] {
+    color: var(--l-ink-2) !important;
+}
+
+.live .live-tabs a.live-tab[href]:hover,
+.live .live-tabs a.live-tab.active[href] {
+    color: var(--l-ink) !important;
+}
+
+.live a.dock-go[href] {
+    color: var(--l-accent-ink) !important;
+}
+
+.live a.live-ghost[href],
+.live a.chip[href] {
+    color: var(--l-ink) !important;
+}
+
+.live .bench-source a[href] {
+    color: var(--l-accent) !important;
+}
+
+.live .bench-source a[href]:hover {
+    text-decoration: underline !important;
+}
+
+.live-tabs {
+    justify-self: start;
+}
+
+.live .live-tabs a.live-tab {
+    white-space: nowrap;
+}
+
+.live-dock .dock-group.faults {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+@media (max-width: 1180px) {
+    .live-dock .dock-divider {
+        display: none;
+    }
+
+    .live-dock .dock-group.faults {
+        flex-basis: 100%;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 720px) {
+    .live-dock .dock-group {
+        flex: 1 1 100%;
+    }
+
+    .live-dock .dock-go {
+        flex: 1 1 auto;
+    }
+}
+
+@media (max-height: 620px) {
+    .live-top {
+        top: 8px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .live-score {
+        top: 64px;
+        padding: 8px 12px 10px;
+    }
+
+    .live-score h2,
+    .live-story {
+        display: none;
+    }
+
+    .live-dock {
+        bottom: 8px;
+        padding: 8px 12px;
+        gap: 8px 12px;
+        align-items: center;
+    }
+
+    .live-dock .dock-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .live-dock .dock-group:not(.faults) .dock-label {
+        display: none;
+    }
+
+    .live-dock .chip,
+    .live-dock .dock-select {
+        height: 32px;
+    }
+
+    .live-dock .dock-go {
+        height: 36px;
+        padding: 0 18px;
+    }
+}
+
+@media (max-width: 720px) and (max-height: 620px) {
+    .live-dock .dock-group,
+    .live-dock .dock-go {
+        flex: 0 1 auto;
+    }
+
+    .live-dock .dock-select {
+        width: auto;
+    }
+
+    .live-dock .dock-group.faults .dock-label {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .live-crumb {
+        display: none;
+    }
+}
+
+@media (max-height: 460px) {
+    .live-score {
+        display: none;
+    }
+}
+
+/* The Benchmarks page in the dark theme (the theme toggle in its header and the SCADA's). */
+
+:root[data-theme="dark"] .live.bench {
+    --l-ink: #e7eef6;
+    --l-ink-2: #aebdcd;
+    --l-ink-3: #8191a5;
+    --l-glass: rgba(19, 30, 43, 0.88);
+    --l-glass-strong: rgba(19, 30, 43, 0.96);
+    --l-edge: rgba(170, 200, 235, 0.14);
+    --l-accent: #3aa0f0;
+    --l-accent-ink: #04111d;
+    color-scheme: dark;
+    background: radial-gradient(1200px 600px at 85% -10%, rgba(58, 160, 240, 0.12), rgba(58, 160, 240, 0) 70%), #0b131d;
+}
+
+:root[data-theme="dark"] .bench .glass {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .bench-facts div {
+    background: rgba(170, 200, 235, 0.07);
+}
+
+.bench .bench-top {
+    grid-template-columns: auto auto 1fr auto;
+}
+
+.bench-top .live-icon {
+    justify-self: end;
+}
+
+.bench-top .live-icon svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+}
+
+.bench-top .live-icon svg circle,
+.bench-top .live-icon svg path:only-child {
+    fill: currentColor;
+    stroke: none;
 }

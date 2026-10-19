@@ -3,7 +3,7 @@ using StormBench.Contracts;
 using StormBench.Domain.Network;
 using StormBench.Domain.Runs;
 using StormBench.Domain.Scenarios;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 

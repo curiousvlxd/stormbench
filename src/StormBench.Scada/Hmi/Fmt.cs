@@ -62,6 +62,6 @@ public static class Fmt
         ControlMode.EfdIntended => "EFD in the PLC, as intended",
         ControlMode.EfdCenter => "EFD from the center",
         null => NoValue,
-        _ => $"mode {(long)mode}",
+        _ => $"mode {(long)mode}"
     };
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-ix-theme="classic" data-ix-color-schema="light">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="utf-8" />
@@ -11,7 +11,6 @@
     <link rel="preload" href="fonts/SourceSans3-Variable.ttf" as="font" type="font/ttf" crossorigin />
     <script src="@Assets["theme.js"]"></script>
     <ResourcePreloader />
-    <link rel="stylesheet" href="_content/Siemens.IX.Blazor/css/siemens-ix/siemens-ix.css" />
     <link rel="stylesheet" href="@Assets["hmi.css"]" />
     <link rel="stylesheet" href="@Assets["live.css"]" />
     <ImportMap />
@@ -21,7 +20,6 @@
 <body>
     <Routes @rendermode="InteractiveNoPrerender" />
     <ReconnectModal />
-    <script src="_content/Siemens.IX.Blazor/js/siemens-ix/index.bundle.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 
@@ -29,8 +27,8 @@
 
 @code {
     /// <summary>
-    /// The iX web components rearrange their own markup when they load, which a prerendered page
-    /// handed over to the interactive renderer does not survive: render interactively only.
+    /// The pages show live data from the feed and the 3D view, both only once the circuit is up:
+    /// render interactively only, with no static page to be replaced.
     /// </summary>
     private static readonly IComponentRenderMode InteractiveNoPrerender = new InteractiveServerRenderMode(prerender: false);
 }

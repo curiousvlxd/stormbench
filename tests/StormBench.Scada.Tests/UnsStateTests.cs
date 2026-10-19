@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Time.Testing;
 using StormBench.Contracts;
 using StormBench.Infrastructure.PrimaryHost;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Scada.Tests;
 

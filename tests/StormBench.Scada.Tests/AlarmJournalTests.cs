@@ -37,7 +37,7 @@ public class AlarmJournalTests : ICurrentRun
             [
                 (AlarmState.Normal, AlarmState.Unacknowledged),
                 (AlarmState.Unacknowledged, AlarmState.Acknowledged),
-                (AlarmState.Acknowledged, AlarmState.Normal),
+                (AlarmState.Acknowledged, AlarmState.Normal)
             ],
             Changes(High.Id));
         var raised = _store.Entries[0];
@@ -73,7 +73,7 @@ public class AlarmJournalTests : ICurrentRun
                 (AlarmState.Unacknowledged, AlarmState.ReturnedUnacknowledged),
                 (AlarmState.ReturnedUnacknowledged, AlarmState.Unacknowledged),
                 (AlarmState.Unacknowledged, AlarmState.ReturnedUnacknowledged),
-                (AlarmState.ReturnedUnacknowledged, AlarmState.Normal),
+                (AlarmState.ReturnedUnacknowledged, AlarmState.Normal)
             ],
             Changes(High.Id));
     }

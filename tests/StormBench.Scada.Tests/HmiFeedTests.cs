@@ -3,7 +3,7 @@ using StormBench.Application.Historian;
 using StormBench.Contracts;
 using StormBench.Domain.Alarms;
 using StormBench.Scada.Hmi;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 
@@ -50,10 +50,10 @@ public sealed class HmiFeedTests
 
         var view = _feed.Build();
         var diagram = view.Diagram!;
-        var t1 = diagram.Tanks.Single(t => t.Shape.Id == "T1");
-        var t2 = diagram.Tanks.Single(t => t.Shape.Id == "T2");
-        var v2 = diagram.Valves.Single(v => v.Shape.Id == "V2");
-        var v1 = diagram.Valves.Single(v => v.Shape.Id == "V1");
+        var t1 = diagram.Tanks.Single(t => t.Shape.Id is "T1");
+        var t2 = diagram.Tanks.Single(t => t.Shape.Id is "T2");
+        var v2 = diagram.Valves.Single(v => v.Shape.Id is "V2");
+        var v1 = diagram.Valves.Single(v => v.Shape.Id is "V1");
 
         Assert.Equal(0.5, t1.Fill);
         Assert.False(t1.Stale);
@@ -76,7 +76,7 @@ public sealed class HmiFeedTests
 
         var view = _feed.Build();
 
-        var t1 = view.Diagram!.Tanks.Single(t => t.Shape.Id == "T1");
+        var t1 = view.Diagram!.Tanks.Single(t => t.Shape.Id is "T1");
         Assert.True(t1.Stale);
         Assert.Equal(0.5, t1.Fill);
         Assert.Null(view.ModeActive);
@@ -90,9 +90,9 @@ public sealed class HmiFeedTests
 
         var view = _feed.Build();
 
-        var t2 = view.Diagram!.Tanks.Single(t => t.Shape.Id == "T2");
+        var t2 = view.Diagram!.Tanks.Single(t => t.Shape.Id is "T2");
         Assert.Equal("T2.Overflow", t2.Alarm?.Definition.Id);
-        Assert.Null(view.Diagram.Tanks.Single(t => t.Shape.Id == "T1").Alarm);
+        Assert.Null(view.Diagram.Tanks.Single(t => t.Shape.Id is "T1").Alarm);
         Assert.Equal(AlarmState.Unacknowledged, Assert.Single(view.Alarms).State);
     }
 

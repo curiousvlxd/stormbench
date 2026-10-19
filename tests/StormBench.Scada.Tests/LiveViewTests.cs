@@ -5,7 +5,7 @@ using StormBench.Domain.Kpi;
 using StormBench.Domain.Network;
 using StormBench.Scada.Hmi;
 using StormBench.Scada.Hmi.Live;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 
@@ -50,8 +50,8 @@ public sealed class LiveViewTests
 
         Assert.True(frame.Running);
         Assert.Equal(6.0, frame.Rain);
-        Assert.Equal(0.5, frame.Tanks.Single(t => t.Id == "T1").Fill);
-        Assert.True(frame.Tanks.Single(t => t.Id == "T2").Overflowing);
+        Assert.Equal(0.5, frame.Tanks.Single(t => t.Id is "T1").Fill);
+        Assert.True(frame.Tanks.Single(t => t.Id is "T2").Overflowing);
         var gate = Assert.Single(frame.Gates);
         Assert.Equal(("V2", 0.3, 0.3), (gate.Id, gate.Setpoint, gate.Opening));
         Assert.Equal("CSO1", Assert.Single(frame.Weirs).Id);

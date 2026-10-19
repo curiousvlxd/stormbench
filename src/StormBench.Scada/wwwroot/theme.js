@@ -1,6 +1,5 @@
 (function () {
     const key = "hmi-theme";
-    const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
     function stored() {
         try {
@@ -12,17 +11,9 @@
 
     function apply(theme) {
         document.documentElement.dataset.theme = theme;
-        document.documentElement.dataset.ixColorSchema = theme;
     }
 
-    apply(stored() || (media && media.matches ? "dark" : "light"));
-    if (media) {
-        media.addEventListener("change", (e) => {
-            if (!stored()) {
-                apply(e.matches ? "dark" : "light");
-            }
-        });
-    }
+    apply(stored() === "dark" ? "dark" : "light");
 
     window.hmiTheme = {
         current: () => document.documentElement.dataset.theme,

@@ -1,0 +1,86 @@
+@page "/"
+@inject IJSRuntime JS
+
+<PageTitle>Benchmarks, StormBench</PageTitle>
+
+<div class="live bench">
+    <header class="live-top bench-top glass">
+        <a class="live-brand bench-home" href="" aria-current="page">
+            <img class="live-logo" src="live/assets/logo.svg" alt="" width="24" height="24" />
+            <span class="live-title">StormBench</span>
+        </a>
+        <nav class="live-tabs" aria-label="Sections">
+            <a class="live-tab active" href="" aria-current="page">Benchmarks</a>
+        </nav>
+        <button type="button" class="live-icon" @onclick="ToggleThemeAsync"
+                aria-label="@(_theme is "dark" ? "Switch to the light theme" : "Switch to the dark theme")"
+                title="@(_theme is "dark" ? "Light theme" : "Dark theme")">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                @if (_theme is "dark")
+                {
+                    <circle cx="12" cy="12" r="4.5" />
+                    <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" />
+                }
+                else
+                {
+                    <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+                }
+            </svg>
+        </button>
+    </header>
+
+    <main class="bench-main">
+        <h1 class="bench-title">Benchmarks</h1>
+        <p class="bench-lead">
+            Sewer networks from the research on real-time control. Each one runs here as a sandbox: the
+            hydraulic model, the PLC program that controls it, the SCADA and the town in 3D, in lockstep.
+        </p>
+
+        <article class="bench-card glass" aria-labelledby="astlingen-title">
+            <a class="bench-shot" href="benchmarks/astlingen" tabindex="-1" aria-hidden="true">
+                <img src="benchmarks/astlingen.jpg" alt="" width="1280" height="760" />
+            </a>
+            <div class="bench-body">
+                <span class="bench-kicker">Combined sewer network</span>
+                <h2 id="astlingen-title" class="bench-name">Astlingen RTC Benchmarking Network</h2>
+                <p class="bench-text">
+                    A small town with a combined sewer. Ten subcatchments drain through six storage tanks
+                    to the treatment plant; in heavy rain the water spills into the river at ten overflows.
+                    Four of the tank outlets are controlled, so a controller can choose where the town spills.
+                </p>
+                <dl class="bench-facts">
+                    <div><dt>Storage</dt><dd>6 tanks, 5,900 m³</dd></div>
+                    <div><dt>Controlled outlets</dt><dd>4</dd></div>
+                    <div><dt>Overflows</dt><dd>10</dd></div>
+                    <div><dt>Rain</dt><dd>4 gauges, the year 2000</dd></div>
+                </dl>
+                <div class="bench-actions">
+                    <a class="dock-go bench-open" href="benchmarks/astlingen">Open sandbox</a>
+                    <a class="live-ghost" href="benchmarks/astlingen/operator">Operator SCADA</a>
+                </div>
+                <p class="bench-source">
+                    From the DWA working group on real-time control (Schütze et al., 2017), as implemented in SWMM by
+                    <a href="https://doi.org/10.3390/w12041034" target="_blank" rel="noopener">Sun et al., 2020</a>,
+                    model from <a href="https://github.com/open-toolbox/SWMM-Astlingen" target="_blank" rel="noopener">SWMM-Astlingen</a>.
+                </p>
+            </div>
+        </article>
+
+        <p class="bench-more">More networks will follow.</p>
+    </main>
+</div>
+
+@code {
+    private string _theme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RendererInfo.IsInteractive)
+        {
+            _theme = await JS.InvokeAsync<string>("hmiTheme.current");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleThemeAsync() => _theme = await JS.InvokeAsync<string>("hmiTheme.toggle");
+}

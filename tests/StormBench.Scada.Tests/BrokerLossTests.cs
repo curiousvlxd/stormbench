@@ -14,10 +14,12 @@ using StormBench.Application.Site;
 using StormBench.Contracts;
 using StormBench.Domain.Alarms;
 using StormBench.Domain.Control;
-using StormBench.Infrastructure.Postgres;
 using StormBench.Infrastructure.PrimaryHost;
 using StormBench.Infrastructure.VictoriaMetrics;
-using StormBench.Sparkplug;
+using StormBench.Scada.Tests.Fakes;
+using StormBench.Sparkplug.EdgeNode;
+using StormBench.Sparkplug.HostApplication;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Scada.Tests;
 
@@ -62,15 +64,23 @@ public sealed class BrokerLossTests : IAsyncLifetime, IDisposable
         _host = new SparkplugHostApplication(
             new HostApplicationOptions
             {
-                Host = "127.0.0.1", Port = _port, HostId = Uns.PrimaryHostId, GroupId = Uns.GroupId, ReconnectDelay = fast,
+                Host = "127.0.0.1",
+                Port = _port,
+                HostId = Uns.PrimaryHostId,
+                GroupId = Uns.GroupId,
+                ReconnectDelay = fast
             },
             TimeProvider.System,
             NullLogger<SparkplugHostApplication>.Instance);
         _edge = new SparkplugEdgeNode(
             new EdgeNodeOptions
             {
-                Host = "127.0.0.1", Port = _port, GroupId = Uns.GroupId, EdgeNodeId = Uns.EdgeNodeId,
-                PrimaryHostId = Uns.PrimaryHostId, ReconnectDelay = fast,
+                Host = "127.0.0.1",
+                Port = _port,
+                GroupId = Uns.GroupId,
+                EdgeNodeId = Uns.EdgeNodeId,
+                PrimaryHostId = Uns.PrimaryHostId,
+                ReconnectDelay = fast
             },
             TimeProvider.System,
             NullLogger<SparkplugEdgeNode>.Instance);
@@ -80,9 +90,9 @@ public sealed class BrokerLossTests : IAsyncLifetime, IDisposable
             new OptimizationMetrics(_services.GetRequiredService<System.Diagnostics.Metrics.IMeterFactory>()),
             NullLogger<CenterOptimizer>.Instance);
         _alarms = new AlarmEngine(TimeProvider.System);
-        var runs = new RunRecorder(new NoRunStore(), TimeProvider.System);
+        var runs = new RunRecorder(new NullRunStore(), TimeProvider.System);
         var monitor = new SiteMonitor(
-            site, runs, _alarms, new FieldChecks(), new RunTrend(), new RunSampler(runs, _alarms, new PrometheusRunSeries(new NoSampleSink())));
+            site, runs, _alarms, new FieldChecks(), new RunTrend(), new RunSampler(runs, _alarms, new PrometheusRunSeries(new NullSampleSink())));
         _worker = new UnsHostWorker(_host, _state, optimizer, monitor, TimeProvider.System, NullLogger<UnsHostWorker>.Instance);
 
         await _edge.PublishDeviceDataAsync(
@@ -111,7 +121,7 @@ public sealed class BrokerLossTests : IAsyncLifetime, IDisposable
     private Infrastructure.PrimaryHost.Quality? Quality() =>
         _state.TryGetDeviceMetric(Uns.GroupId, Uns.EdgeNodeId, Uns.PlcDeviceId, LevelT2, out var m) ? m.Quality : null;
 
-    private NodeSnapshot Node() => _state.Snapshot().Single(n => n.EdgeNodeId == Uns.EdgeNodeId);
+    private NodeSnapshot Node() => _state.Snapshot().Single(n => n.EdgeNodeId is Uns.EdgeNodeId);
 
     private Alarm? Alarm(string id) => _alarms.Current().FirstOrDefault(a => a.Definition.Id == id);
 
@@ -155,7 +165,7 @@ public sealed class BrokerLossTests : IAsyncLifetime, IDisposable
 
         await Eventually(() => Quality() is Infrastructure.PrimaryHost.Quality.Stale, "stale after losing the broker");
         Assert.False(Node().Online);
-        await Eventually(() => Alarm(AlarmDefinitions.Broker.Id)?.Active == true, "broker alarm");
+        await Eventually(() => Alarm(AlarmDefinitions.Broker.Id)?.Active is true, "broker alarm");
 
         await _broker.StartAsync();
 

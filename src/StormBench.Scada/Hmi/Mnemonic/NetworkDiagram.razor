@@ -4,6 +4,12 @@
 <svg class="mnemonic" viewBox="0 0 @Svg.N(l.Width) @Svg.N(l.Height)" role="img" aria-labelledby="mnemonic-title mnemonic-desc">
     <title id="mnemonic-title">Astlingen network overview</title>
     <desc id="mnemonic-desc">@Description</desc>
+    <defs>
+        <linearGradient id="water-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--water)" />
+            <stop offset="1" stop-color="var(--water-deep)" />
+        </linearGradient>
+    </defs>
     <g class="pipes">
         @foreach (var pipe in l.Pipes)
         {

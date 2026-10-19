@@ -1,0 +1,10 @@
+@* The mark of an overflowing vessel: a round badge with a drop, at (X, Y) on its top right corner. *@
+<g class="spill-badge" transform="translate(@Svg.N(X) @Svg.N(Y))" aria-hidden="true">
+    <circle r="@Svg.N(DiagramLayout.BadgeRadius)" />
+    <path d="M 0 -54 C 22 -22, 38 0, 38 19 A 38 38 0 0 1 -38 19 C -38 0, -22 -22, 0 -54 Z" />
+</g>
+
+@code {
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+}

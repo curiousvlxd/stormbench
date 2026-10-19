@@ -19,7 +19,35 @@
     <None Include="..\..\fonts\SourceSans3-Variable.ttf;..\..\fonts\SourceSans3-OFL.txt" Link="fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Siemens.IX.Blazor" Version="1.0.0" />
+    <PackageReference Include="Npgsql.OpenTelemetry" Version="10.0.3" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <LiveRoot>$(MSBuildThisFileDirectory)..\StormBench.Live\</LiveRoot>
+    <LiveDist>wwwroot\live\dist\</LiveDist>
+    <LiveBundle>$(MSBuildThisFileDirectory)$(LiveDist)scene.js</LiveBundle>
+    <BuildLive Condition="'$(BuildLive)' == '' and '$(DesignTimeBuild)' != 'true'">true</BuildLive>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <LiveSource Include="$(LiveRoot)src\**\*.ts;$(LiveRoot)package.json;$(LiveRoot)package-lock.json;$(LiveRoot)tsconfig.json;$(LiveRoot)vite.config.ts" />
+    <Content Remove="$(LiveDist)**" />
+  </ItemGroup>
+
+  <Target Name="InstallLive" Condition="'$(BuildLive)' == 'true'" Inputs="$(LiveRoot)package.json;$(LiveRoot)package-lock.json" Outputs="$(LiveRoot)node_modules\.package-lock.json">
+    <Exec Command="npm ci" WorkingDirectory="$(LiveRoot)" IgnoreStandardErrorWarningFormat="true" EnvironmentVariables="NO_COLOR=1" />
+    <Touch Files="$(LiveRoot)node_modules\.package-lock.json" />
+  </Target>
+
+  <Target Name="BuildLive" Condition="'$(BuildLive)' == 'true'" DependsOnTargets="InstallLive" Inputs="@(LiveSource)" Outputs="$(LiveBundle)">
+    <Exec Command="npm run build" WorkingDirectory="$(LiveRoot)" IgnoreStandardErrorWarningFormat="true" EnvironmentVariables="NO_COLOR=1" />
+  </Target>
+
+  <Target Name="IncludeLiveBundle" Condition="'$(NoBuild)' != 'true'" BeforeTargets="ResolveProjectStaticWebAssets" DependsOnTargets="BuildLive">
+    <Error Condition="!Exists('$(LiveBundle)') and '$(DesignTimeBuild)' != 'true'" Text="The Live 3D view is not built ($(LiveDist)scene.js): run npm ci and npm run build in src/StormBench.Live, or build without -p:BuildLive=false." />
+    <ItemGroup>
+      <Content Include="$(LiveDist)**" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    </ItemGroup>
+  </Target>
 
 </Project>

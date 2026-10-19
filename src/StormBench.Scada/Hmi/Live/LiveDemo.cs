@@ -56,7 +56,7 @@ public sealed class LiveDemo(long runBefore, GateId gate)
         new(93, [DemoCommand.FocusPlc], null),
         new(140, [DemoCommand.RestoreLink, DemoCommand.Overview], _ => null),
         new(250, [DemoCommand.JamGate, DemoCommand.FocusGate], caught => new(3, Chapters, "A gate jams", caught ? "SCADA caught it" : "Will SCADA notice?"), NeedsGate: true, HoldUntil: 330),
-        new(345, [DemoCommand.FreeGate, DemoCommand.Overview], _ => null),
+        new(345, [DemoCommand.FreeGate, DemoCommand.Overview], _ => null)
     ];
 
     private int _next;

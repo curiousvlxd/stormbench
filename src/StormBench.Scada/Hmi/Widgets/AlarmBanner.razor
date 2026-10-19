@@ -27,9 +27,10 @@
             <span class="banner-message">@top.Definition.Message</span>
             <span class="banner-time">@(top.SimTime is { } t ? Fmt.Time(t) : Fmt.WallTime(top.ActivatedAt))</span>
         </div>
-        <Button Id="ack-all" Variant="ButtonVariant.secondary" Icon="checkboxes" Disabled="@(unacknowledged == 0)" ClickEvent="OnAcknowledgeAll">
+        <button type="button" id="ack-all" class="button" disabled="@(unacknowledged == 0)" @onclick="OnAcknowledgeAll">
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" /></svg>
             @(unacknowledged > 0 ? $"Acknowledge all ({unacknowledged})" : "Acknowledge all")
-        </Button>
+        </button>
     }
 </section>
 

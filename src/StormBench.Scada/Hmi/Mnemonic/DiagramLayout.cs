@@ -11,7 +11,7 @@ public sealed record PipeShape(string Id, Point2 From, Point2 To, bool IsOutlet)
 
 public sealed record TankShape(string Id, Point2 Center, double Width, double Height, TextSpot Tag, TextSpot Values, Point2 Indicator);
 
-public sealed record ValveShape(string Id, string Tank, Point2 Center, double AngleDegrees, bool Controlled, TextSpot Label);
+public sealed record ValveShape(string Id, string Tank, Point2 Center, double AngleDegrees, bool Controlled, TextSpot Label, Point2 Indicator);
 
 public sealed record WeirShape(string Id, Point2 Center, TextSpot Label, Point2 Indicator);
 
@@ -36,6 +36,12 @@ public sealed record DiagramLayout(
 {
     public const double TankWidth = 420;
     public const double TankHeight = 640;
+
+    /// <summary>The vessel in the shape of the StormBench mark: rounded corners, a lid on top, the wall's thickness.</summary>
+    public const double TankRadius = 96;
+    public const double TankWall = 22;
+    public const double LidWidth = 150;
+    public const double LidHeight = 70;
     public const double WeirSize = 240;
     public const double IndicatorSize = 250;
 
@@ -51,6 +57,10 @@ public sealed record DiagramLayout(
     private const double PadBottom = 800;
     private const double ValveGap = 260;
     private const double PipeHalfWidth = 30;
+
+    /// <summary>The overflow badge on a vessel's top right corner (SpillBadge.razor), and the room it and the halo take beside the vessel.</summary>
+    public const double BadgeRadius = 86;
+    public const double SpillMargin = 70;
 
     public static DiagramLayout From(NetworkDescription network)
     {
@@ -82,7 +92,7 @@ public sealed record DiagramLayout(
         List<(string Id, string Tank, Point2 From, Point2 To)> outlets = [];
         foreach (var link in network.Links.Where(l => nodes.ContainsKey(l.From) && nodes.ContainsKey(l.To)))
         {
-            var isOutlet = link.Kind == "orifice" && tankSet.Contains(link.From);
+            var isOutlet = link.Kind is "orifice" && tankSet.Contains(link.From);
             pipes.Add(new PipeShape(link.Id, At(link.From), At(link.To), isOutlet));
             if (isOutlet)
             {
@@ -111,12 +121,21 @@ public sealed record DiagramLayout(
             scene.Block(Box.Around(center, 240, 240));
         }
 
+        foreach (var tank in tankIds)
+        {
+            scene.Block(Box.Around(At(tank), TankWidth + (2 * SpillMargin), TankHeight));
+        }
+        foreach (var weir in weirIds)
+        {
+            scene.Block(Box.Around(At(weir), WeirSize + (2 * SpillMargin), WeirSize));
+        }
+
         Dictionary<string, TextSpot> tagSpots = [];
         Dictionary<string, Point2> tankIndicators = [];
         foreach (var tank in tankIds)
         {
             var c = At(tank);
-            var tag = new TextSpot(c.X, c.Y - (TankHeight / 2) - 90, "middle");
+            var tag = new TextSpot(c.X, c.Y - (TankHeight / 2) - LidHeight - 70, "middle");
             tagSpots[tank] = tag;
             scene.Block(TextBox(tag, [(tank, TagSize)]));
         }
@@ -125,51 +144,13 @@ public sealed record DiagramLayout(
             var c = At(tank);
             var tagY = tagSpots[tank].Y - (TagSize * 0.35);
             var half = TextWidth(tank, TagSize) / 2;
-            tankIndicators[tank] = scene.PlacePoint(IndicatorSize,
+            tankIndicators[tank] = scene.PlacePoint(IndicatorSize, c,
             [
                 new Point2(c.X - half - 190, tagY),
                 new Point2(c.X + half + 190, tagY),
                 new Point2(c.X - (TankWidth / 2) - 190, c.Y - (TankHeight / 2) + 140),
-                new Point2(c.X + (TankWidth / 2) + 190, c.Y + (TankHeight / 2) - 140),
+                new Point2(c.X + (TankWidth / 2) + 190, c.Y + (TankHeight / 2) - 140)
             ]);
-        }
-
-        List<TankShape> tanks = [];
-        foreach (var tank in tankIds)
-        {
-            var c = At(tank);
-            var x0 = c.X - (TankWidth / 2);
-            var x1 = c.X + (TankWidth / 2);
-            var y0 = c.Y - (TankHeight / 2);
-            var y1 = c.Y + (TankHeight / 2);
-            (string, double)[] lines = [("100% ?", ValueSize), ("4.00 m", SubSize), ("real 100%", SubSize)];
-            var spot = scene.Place(lines,
-            [
-                new TextSpot(x1 + 70, y0 + ValueSize + 10, "start"),
-                new TextSpot(x0 - 70, y0 + ValueSize + 10, "end"),
-                new TextSpot(x1 + 70, y1 - LineGap - 20, "start"),
-                new TextSpot(x0 - 70, y1 - LineGap - 20, "end"),
-                new TextSpot(c.X, y1 + ValueSize + 70, "middle"),
-            ]);
-            tanks.Add(new TankShape(tank, c, TankWidth, TankHeight, tagSpots[tank], spot, tankIndicators[tank]));
-        }
-
-        List<ValveShape> valves = [];
-        for (var i = 0; i < outlets.Count; i++)
-        {
-            var (id, tank, _, _) = outlets[i];
-            var (center, angle) = valveCenters[i];
-            (string, double)[] lines = [(id, SubSize), ("100%", 150)];
-            var spot = scene.Place(lines,
-            [
-                new TextSpot(center.X + 170, center.Y + 40, "start"),
-                new TextSpot(center.X - 170, center.Y + 40, "end"),
-                new TextSpot(center.X, center.Y + 150 + SubSize, "middle"),
-                new TextSpot(center.X, center.Y - 170 - LineGap, "middle"),
-                new TextSpot(center.X + 150, center.Y + 150 + SubSize, "start"),
-                new TextSpot(center.X - 150, center.Y + 150 + SubSize, "end"),
-            ]);
-            valves.Add(new ValveShape(id, tank, center, angle, controlled.Contains(id), spot));
         }
 
         List<WeirShape> weirs = [];
@@ -185,24 +166,73 @@ public sealed record DiagramLayout(
             candidates.AddRange(
             [
                 new TextSpot(c.X, c.Y + (WeirSize / 2) + 200, "middle"),
-                new TextSpot(c.X + (WeirSize / 2) + 70, c.Y - 20, "start"),
+                new TextSpot(c.X + (WeirSize / 2) + SpillMargin + 30, c.Y - 20, "start"),
                 new TextSpot(c.X - (WeirSize / 2) - 70, c.Y - 20, "end"),
-                new TextSpot(c.X, c.Y - (WeirSize / 2) - 80 - LineGap, "middle"),
+                new TextSpot(c.X, c.Y - (WeirSize / 2) - 80 - LineGap, "middle")
             ]);
-            var indicator = scene.PlacePoint(IndicatorSize,
+            var indicator = scene.PlacePoint(IndicatorSize, c,
             [
                 new Point2(c.X - (WeirSize / 2) - 170, c.Y),
                 new Point2(c.X + (WeirSize / 2) + 170, c.Y),
                 new Point2(c.X - (WeirSize / 2) - 170, c.Y + 260),
                 new Point2(c.X + (WeirSize / 2) + 170, c.Y + 260),
-                new Point2(c.X, c.Y + (WeirSize / 2) + 200),
+                new Point2(c.X, c.Y + (WeirSize / 2) + 200)
             ]);
-            var spot = scene.Place(lines, [.. candidates]);
+            var spot = scene.Place(lines, c, [.. candidates]);
             weirs.Add(new WeirShape(weir, c, spot, indicator));
         }
 
+        List<TankShape> tanks = [];
+        foreach (var tank in tankIds)
+        {
+            var c = At(tank);
+            var x0 = c.X - (TankWidth / 2);
+            var x1 = c.X + (TankWidth / 2);
+            var y0 = c.Y - (TankHeight / 2);
+            var y1 = c.Y + (TankHeight / 2);
+            (string, double)[] lines = [("100% ?", ValueSize), ("4.00 m", SubSize), ("real 100%", SubSize)];
+            var spot = scene.Place(lines, c,
+            [
+                new TextSpot(x1 + SpillMargin + 30, y0 + ValueSize + 10, "start"),
+                new TextSpot(x0 - SpillMargin - 30, y0 + ValueSize + 10, "end"),
+                new TextSpot(x1 + SpillMargin + 30, y1 - LineGap - 20, "start"),
+                new TextSpot(x0 - SpillMargin - 30, y1 - LineGap - 20, "end"),
+                new TextSpot(x1 + SpillMargin + 30, c.Y - (LineGap / 2), "start"),
+                new TextSpot(x0 - SpillMargin - 30, c.Y - (LineGap / 2), "end"),
+                new TextSpot(c.X, y1 + ValueSize + 70, "middle")
+            ]);
+            tanks.Add(new TankShape(tank, c, TankWidth, TankHeight, tagSpots[tank], spot, tankIndicators[tank]));
+        }
+
+        List<ValveShape> valves = [];
+        for (var i = 0; i < outlets.Count; i++)
+        {
+            var (id, tank, _, _) = outlets[i];
+            var (center, angle) = valveCenters[i];
+            (string, double)[] lines = [(id, SubSize), ("100%", 150)];
+            var spot = scene.Place(lines, center,
+            [
+                new TextSpot(center.X + 170, center.Y + 40, "start"),
+                new TextSpot(center.X - 170, center.Y + 40, "end"),
+                new TextSpot(center.X, center.Y + 150 + SubSize, "middle"),
+                new TextSpot(center.X, center.Y - 170 - LineGap, "middle"),
+                new TextSpot(center.X + 150, center.Y + 150 + SubSize, "start"),
+                new TextSpot(center.X - 150, center.Y + 150 + SubSize, "end")
+            ]);
+            var indicator = scene.PlacePoint(IndicatorSize, center,
+            [
+                new Point2(center.X, center.Y - 260),
+                new Point2(center.X, center.Y + 260),
+                new Point2(center.X - 280, center.Y),
+                new Point2(center.X + 280, center.Y),
+                new Point2(center.X - 230, center.Y - 230),
+                new Point2(center.X + 230, center.Y - 230)
+            ]);
+            valves.Add(new ValveShape(id, tank, center, angle, controlled.Contains(id), spot, indicator));
+        }
+
         var joints = network.Nodes
-            .Where(n => n.Kind == "junction" && !network.OverflowPoints.Contains(n.Id))
+            .Where(n => n.Kind is "junction" && !network.OverflowPoints.Contains(n.Id))
             .Select(n => At(n.Id))
             .ToList();
 
@@ -235,7 +265,7 @@ public sealed record DiagramLayout(
         {
             "end" => spot.X - width,
             "middle" => spot.X - (width / 2),
-            _ => spot.X,
+            _ => spot.X
         };
         return new Box(left, top, left + width, bottom);
     }
@@ -302,33 +332,70 @@ public sealed record DiagramLayout(
         }
     }
 
-    /// <summary>Greedy label placement: each block takes the first candidate with the lowest cost.</summary>
+    /// <summary>
+    /// Greedy label placement: each block takes the candidate with the lowest cost, trying each
+    /// one also pushed further out from what it labels. Covering a symbol or other text costs far
+    /// more than crossing a pipe, and each step out a little more, so text stays close but clear.
+    /// </summary>
     private sealed class Scene(double width, double height, IReadOnlyList<PipeShape> pipes)
     {
+        private const double PipeCost = 10_000;
+        private const double OverlapWeight = 6;
+        private const double OverlapCost = 20_000;
+        private const double PushStep = 130;
+        private const int Pushes = 3;
+        private const double PushCost = 2_500;
+
         private readonly List<Box> _taken = [];
 
         public void Block(Box box) => _taken.Add(box);
 
-        public TextSpot Place((string Text, double Size)[] lines, TextSpot[] candidates)
+        public TextSpot Place((string Text, double Size)[] lines, Point2 of, TextSpot[] candidates)
         {
             var best = candidates[0];
             var bestCost = double.MaxValue;
             for (var i = 0; i < candidates.Length; i++)
             {
-                var cost = Cost(TextBox(candidates[i], lines)) + i;
-                if (cost < bestCost)
+                var c = candidates[i];
+                var dx = c.X - of.X;
+                var dy = c.Y - of.Y;
+                var length = Math.Max(1e-9, Math.Sqrt((dx * dx) + (dy * dy)));
+                for (var k = 0; k <= Pushes; k++)
                 {
-                    bestCost = cost;
-                    best = candidates[i];
+                    var spot = c with { X = c.X + (dx / length * PushStep * k), Y = c.Y + (dy / length * PushStep * k) };
+                    var cost = Cost(TextBox(spot, lines)) + (k * PushCost) + i;
+                    if (cost < bestCost)
+                    {
+                        bestCost = cost;
+                        best = spot;
+                    }
                 }
             }
             _taken.Add(TextBox(best, lines));
             return best;
         }
 
-        public Point2 PlacePoint(double size, Point2[] candidates)
+        public Point2 PlacePoint(double size, Point2 of, Point2[] candidates)
         {
-            var best = candidates.MinBy(c => Cost(Box.Around(c, size, size)));
+            var best = candidates[0];
+            var bestCost = double.MaxValue;
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                var c = candidates[i];
+                var dx = c.X - of.X;
+                var dy = c.Y - of.Y;
+                var length = Math.Max(1e-9, Math.Sqrt((dx * dx) + (dy * dy)));
+                for (var k = 0; k <= Pushes; k++)
+                {
+                    var spot = new Point2(c.X + (dx / length * PushStep * k), c.Y + (dy / length * PushStep * k));
+                    var cost = Cost(Box.Around(spot, size, size)) + (k * PushCost) + i;
+                    if (cost < bestCost)
+                    {
+                        bestCost = cost;
+                        best = spot;
+                    }
+                }
+            }
             _taken.Add(Box.Around(best, size, size));
             return best;
         }
@@ -341,12 +408,13 @@ public sealed record DiagramLayout(
             {
                 if (padded.Crosses(pipe.From, pipe.To))
                 {
-                    cost += 10_000;
+                    cost += PipeCost;
                 }
             }
             foreach (var taken in _taken)
             {
-                cost += taken.Inflate(40).Overlap(box);
+                var overlap = taken.Inflate(40).Overlap(box);
+                cost += overlap > 0 ? OverlapCost + (overlap * OverlapWeight) : 0;
             }
             if (box.X0 < 0 || box.Y0 < 0 || box.X1 > width || box.Y1 > height)
             {

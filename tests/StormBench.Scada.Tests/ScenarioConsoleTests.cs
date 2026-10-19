@@ -12,7 +12,9 @@ using StormBench.Contracts;
 using StormBench.Domain.Network;
 using StormBench.Domain.Scenarios;
 using StormBench.Infrastructure.PrimaryHost;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.HostApplication;
+using StormBench.Sparkplug.Payloads;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Scada.Tests;
 

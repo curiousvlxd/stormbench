@@ -2,7 +2,8 @@ using Microsoft.Extensions.Time.Testing;
 using StormBench.Application.Site;
 using StormBench.Contracts;
 using StormBench.Infrastructure.PrimaryHost;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Scada.Tests;
 
@@ -84,7 +85,7 @@ internal sealed class SiteFixture : IBrokerConnection
             SparkplugMetric.String(SimMetrics.Network, NetworkJson),
             SparkplugMetric.String(SimMetrics.Catalog, CatalogJson),
             SparkplugMetric.String(SimMetrics.State, ScenarioStates.Idle),
-            SparkplugMetric.Int64(SimMetrics.Run, 0),
+            SparkplugMetric.Int64(SimMetrics.Run, 0)
         ];
         State.Apply(Topic(Uns.SimNodeId, MessageTypes.NBirth), new SparkplugPayload(0, 0, [.. basics, .. metrics]));
     }

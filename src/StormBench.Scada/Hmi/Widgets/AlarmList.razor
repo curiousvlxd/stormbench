@@ -36,7 +36,7 @@
                             <td>
                                 @if (alarm.NeedsAcknowledge)
                                 {
-                                    <Button Variant="ButtonVariant.tertiary" ClickEvent="() => OnAcknowledge.InvokeAsync(alarm.Definition.Id)">Acknowledge</Button>
+                                    <button type="button" class="link-button" @onclick="() => OnAcknowledge.InvokeAsync(alarm.Definition.Id)">Acknowledge</button>
                                 }
                             </td>
                         </tr>
