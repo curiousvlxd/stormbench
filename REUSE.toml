@@ -9,7 +9,7 @@ SPDX-FileCopyrightText = "2026 StormBench contributors"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
-path = ["**/*.md", "docs/**", "results/**"]
+path = ["**/*.md", "docs/**", "results/**", "src/StormBench.Scada/wwwroot/benchmarks/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 StormBench contributors"
 SPDX-License-Identifier = "CC-BY-4.0"
@@ -39,12 +39,6 @@ SPDX-FileCopyrightText = "2015, 2018 Cirrus Link Solutions and others"
 SPDX-License-Identifier = "EPL-2.0"
 
 [[annotations]]
-path = "src/StormBench.Scada/wwwroot/lib/three/**"
-precedence = "override"
-SPDX-FileCopyrightText = "2010-2025 three.js authors"
-SPDX-License-Identifier = "MIT"
-
-[[annotations]]
 path = "src/StormBench.Scada/wwwroot/live/kenney/**"
 precedence = "override"
 SPDX-FileCopyrightText = "Kenney (www.kenney.nl)"
@@ -55,3 +49,9 @@ path = "src/StormBench.Scada/wwwroot/live/assets/waternormals.jpg"
 precedence = "override"
 SPDX-FileCopyrightText = "2010-2025 three.js authors"
 SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["assets/models/stormbench.blend", "src/StormBench.Scada/wwwroot/live/models/**"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 StormBench contributors", "Kenney (www.kenney.nl)"]
+SPDX-License-Identifier = "CC-BY-4.0 AND CC0-1.0"

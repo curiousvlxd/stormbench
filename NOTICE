@@ -30,6 +30,8 @@ pymodbus                               BSD-3-Clause
 paho-mqtt                              EPL-2.0 OR BSD-3-Clause (EDL-1.0)
 protobuf (Python)                      BSD-3-Clause
 numpy                                  BSD-3-Clause
+opentelemetry-sdk, opentelemetry-exporter-otlp-proto-http (Python)
+                                       Apache-2.0, Copyright The OpenTelemetry Authors
 scipy (MPC, linear programming)        BSD-3-Clause; its wheels bundle OpenBLAS
                                        and LAPACK (BSD-3-Clause) and the GCC
                                        runtime (GPL-3.0 with GCC Runtime
@@ -47,9 +49,6 @@ OPC Foundation .NET Standard stack     MIT (1.5.378.65 and later)
 FluentModbus                           MIT
 Google.Protobuf, Grpc.Tools            BSD-3-Clause, Apache-2.0
 ASP.NET Core Blazor                    MIT
-Siemens iX, Siemens.IX.Blazor          MIT, Copyright Siemens AG; used with the
-                                       neutral classic theme, without Siemens
-                                       brand assets or fonts
 Testcontainers for .NET (tests)        MIT
 Live 3D view models (src/StormBench.Scada/wwwroot/live/kenney), CC0-1.0:
   City Kit Suburban, City Kit Commercial, City Kit Industrial, City Kit
@@ -57,13 +56,22 @@ Live 3D view models (src/StormBench.Scada/wwwroot/live/kenney), CC0-1.0:
   models with their colour maps, unchanged, licence files alongside.
   waternormals.jpg (live/assets) from the three.js examples (MIT, three.js
   authors).
+StormBench structure models (assets/models/stormbench.blend and the GLB
+  exports in src/StormBench.Scada/wwwroot/live/models), CC-BY-4.0: our own,
+  except the treatment plant hall (City Kit Industrial building-c) and the
+  control room building (City Kit Commercial building-n) by Kenney, CC0-1.0,
+  placed and scaled inside them.
 Astlingen map backdrop astingen.jpg: downloaded with the model from
   SWMM-Astlingen (see above), not redistributed; the simulator traces the
   rivers, the park and the place names from it at run time.
 three.js r180 (Live 3D view)          MIT, Copyright 2010-2025 three.js authors;
-  vendored in src/StormBench.Scada/wwwroot/lib/three with its LICENSE. The
-  addons' imports of 'three' are rewritten to relative paths, nothing else
-  is changed.
+  the npm package three 0.180.0, unchanged, bundled at build time into
+  src/StormBench.Scada/wwwroot/live/dist/scene.js.
+polygon-clipping 0.15.7 (Live 3D view) MIT, Copyright Mike Fogel; with its
+  dependencies robust-predicates 3.0.3 (Unlicense, Vladimir Agafonkin) and
+  splaytree 3.2.3 (MIT, Alexander Milevski), unchanged, bundled into the same
+  file. The licences of every bundled package are shipped alongside it in
+  THIRD-PARTY-LICENSES.txt.
 Sparkplug B schema (sparkplug_b.proto) EPL-2.0, Eclipse Tahu,
   Copyright 2015, 2018 Cirrus Link Solutions and others; the file is
   included unmodified in src/StormBench.Sparkplug/Protos. The Python bindings
@@ -75,6 +83,9 @@ VictoriaLogs (container image)         Apache-2.0, Copyright VictoriaMetrics, In
 PostgreSQL 17 (container image)        PostgreSQL License, Copyright The
                                        PostgreSQL Global Development Group
 Npgsql                                 PostgreSQL License, Copyright The Npgsql
+                                       Development Team
+Dapper                                 Apache-2.0, Copyright Stack Exchange, Inc.
+Npgsql.OpenTelemetry                   PostgreSQL License, Copyright The Npgsql
                                        Development Team
 Aspire.Hosting.PostgreSQL              MIT
 Grafana (container image)              AGPL-3.0, Copyright Grafana Labs. The
@@ -90,5 +101,4 @@ Atkinson Hyperlegible Next (charts)    SIL Open Font License 1.1
 
 "OPC UA" is a trademark of the OPC Foundation. This project is not certified
 by or affiliated with the OPC Foundation, Autonomy Logic, the U.S. EPA or the
-authors of the Astlingen benchmark. It is not affiliated with or endorsed by
-Siemens AG.
+authors of the Astlingen benchmark.

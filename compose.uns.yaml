@@ -75,6 +75,8 @@ services:
 
   simulator:
     <<: *simulator
+    environment:
+      <<: *observability
     command:
       - python /app/models/fetch_astlingen.py --dest /app/models/astlingen
         && python -m stormbench_sim serve --mqtt-host mosquitto --mqtt-port 1883
