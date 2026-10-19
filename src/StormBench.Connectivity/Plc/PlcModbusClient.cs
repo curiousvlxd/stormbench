@@ -5,28 +5,6 @@ using StormBench.Contracts;
 
 namespace StormBench.Connectivity.Plc;
 
-public sealed class PlcOptions
-{
-    public string Host { get; set; } = "localhost";
-    public int Port { get; set; } = 502;
-
-    /// <summary>OpenPLC v4 answers unit id 1 only.</summary>
-    public byte UnitId { get; set; } = 1;
-
-    /// <summary>Pause between two reads of the register image; zero polls back to back.</summary>
-    public TimeSpan PollInterval { get; set; } = TimeSpan.Zero;
-
-    public TimeSpan ReconnectDelay { get; set; } = TimeSpan.FromSeconds(1);
-
-    /// <summary>Modbus (default, the lockstep path) or OpcUa (read over OPC UA, write proposals over Modbus).</summary>
-    public string Driver { get; set; } = "Modbus";
-
-    public string OpcUaEndpoint { get; set; } = "opc.tcp://127.0.0.1:4840/openplc/opcua";
-
-    /// <summary>Whether a driver name selects the OPC UA reader; anything else is Modbus.</summary>
-    public static bool IsOpcUa(string? driver) => string.Equals(driver, "OpcUa", StringComparison.OrdinalIgnoreCase);
-}
-
 /// <summary>
 /// Reads the whole PLC register image (%ML0..%ML23) with one FC3 request, so every snapshot is
 /// consistent, and writes the central optimiser's proposal with one FC16 request, step last.

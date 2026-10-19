@@ -35,7 +35,7 @@ public sealed partial class OpcUaPlcReader(IOptions<PlcOptions> plcOptions, ILog
         "StepReq", "StepAck", "SimTimeS", "CmdMode", "CenterOk",
         "DepthT1", "DepthT2", "DepthT3", "DepthT4", "DepthT5", "DepthT6",
         "CenterSetpointV2", "CenterSetpointV3", "CenterSetpointV4", "CenterSetpointV6", "CenterStep",
-        "SetpointV2", "SetpointV3", "SetpointV4", "SetpointV6", "ModeActive", "Status", "ScanCount",
+        "SetpointV2", "SetpointV3", "SetpointV4", "SetpointV6", "ModeActive", "Status", "ScanCount"
     ];
 
     private readonly PlcOptions _options = plcOptions.Value;
@@ -105,7 +105,7 @@ public sealed partial class OpcUaPlcReader(IOptions<PlcOptions> plcOptions, ILog
         return new PlcSnapshot(
             Int("SimTimeS"),
             (ControlMode)Int("CmdMode"),
-            Int("CenterOk") != 0,
+            Int("CenterOk") is not 0,
             [.. PlcMetrics.Tanks.Select(t => Real($"Depth{t}"))],
             Int("StepReq"),
             [.. PlcMetrics.ControlledValves.Select(v => Real($"CenterSetpoint{v}"))],
@@ -137,15 +137,15 @@ public sealed partial class OpcUaPlcReader(IOptions<PlcOptions> plcOptions, ILog
                 {
                     StoreType = CertificateStoreType.Directory,
                     StorePath = Path.Combine(pki, "own"),
-                    SubjectName = "CN=StormBench.Connectivity",
+                    SubjectName = "CN=StormBench.Connectivity"
                 },
                 TrustedPeerCertificates = new CertificateTrustList { StoreType = CertificateStoreType.Directory, StorePath = Path.Combine(pki, "trusted") },
                 TrustedIssuerCertificates = new CertificateTrustList { StoreType = CertificateStoreType.Directory, StorePath = Path.Combine(pki, "issuer") },
                 RejectedCertificateStore = new CertificateTrustList { StoreType = CertificateStoreType.Directory, StorePath = Path.Combine(pki, "rejected") },
-                AutoAcceptUntrustedCertificates = false,
+                AutoAcceptUntrustedCertificates = false
             },
             TransportQuotas = new TransportQuotas { OperationTimeout = 15000 },
-            ClientConfiguration = new ClientConfiguration { DefaultSessionTimeout = 60000 },
+            ClientConfiguration = new ClientConfiguration { DefaultSessionTimeout = 60000 }
         };
         await configuration.ValidateAsync(ApplicationType.Client, cancellationToken);
         await new ApplicationInstance(configuration, telemetry).CheckApplicationInstanceCertificatesAsync(false, null, cancellationToken);

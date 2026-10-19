@@ -4,7 +4,8 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Options;
 using StormBench.Connectivity.Plc;
 using StormBench.Contracts;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.EdgeNode;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Connectivity;
 
@@ -98,7 +99,7 @@ public sealed partial class EdgeGateway(
             SparkplugMetric.Boolean(PlcMetrics.CenterOk, s.CenterOk),
             SparkplugMetric.Int64(PlcMetrics.ModeActive, (long)s.ModeActive),
             SparkplugMetric.Int64(PlcMetrics.Status, s.Status),
-            SparkplugMetric.Int64(PlcMetrics.CenterStepEcho, s.CenterStep),
+            SparkplugMetric.Int64(PlcMetrics.CenterStepEcho, s.CenterStep)
         ];
         for (var i = 0; i < PlcMetrics.Tanks.Count; i++)
         {
@@ -130,7 +131,7 @@ public sealed partial class EdgeGateway(
 
     private async Task OnDeviceCommandAsync(string deviceId, SparkplugPayload command, CancellationToken cancellationToken)
     {
-        if (deviceId != Uns.PlcDeviceId)
+        if (deviceId is not Uns.PlcDeviceId)
         {
             return;
         }

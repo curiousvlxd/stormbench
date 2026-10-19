@@ -120,7 +120,7 @@ public sealed class RunSampler(RunRecorder runs, AlarmEngine alarms, IRunSeriesW
             Setpoints = plcOnline ? [.. plc.Stations.Select(s => (s.Gate, Good(plc.Setpoint(s.Gate))))] : [],
             Mode = plcOnline && plc.ModeActive is { Good: true } mode ? (long)mode.Value : null,
             AlarmsActive = current.Count(a => a.Active),
-            AlarmsUnacknowledged = current.Count(a => a.NeedsAcknowledge),
+            AlarmsUnacknowledged = current.Count(a => a.NeedsAcknowledge)
         };
     }
 

@@ -64,7 +64,7 @@ public sealed class FieldChecks
             if (_pendingPlcStep is { } pending)
             {
                 var ack = site.PlcValues.StepAck;
-                if (pending == 0 || ack == pending)
+                if (pending is 0 || ack == pending)
                 {
                     _pendingPlcStep = null;
                     Advance(site, network);
@@ -77,7 +77,7 @@ public sealed class FieldChecks
             return
             [
                 .. network.Gates.Select(g => (AlarmDefinitions.GateDeviation(g), _gateCount.GetValueOrDefault(g) >= GateSteps)),
-                .. network.Tanks.Select(t => (AlarmDefinitions.LevelFrozen(t), _frozenCount.GetValueOrDefault(t) >= FrozenSteps)),
+                .. network.Tanks.Select(t => (AlarmDefinitions.LevelFrozen(t), _frozenCount.GetValueOrDefault(t) >= FrozenSteps))
             ];
         }
     }

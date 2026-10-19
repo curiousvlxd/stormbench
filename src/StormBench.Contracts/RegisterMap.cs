@@ -60,7 +60,7 @@ public static class RegisterMap
     /// <summary>Center block %ML10..%ML14: four proposals, then the step, in one FC16 request.</summary>
     public static ushort[] EncodeCenterProposal(long step, ReadOnlySpan<double> proposal)
     {
-        if (proposal.Length != Stations)
+        if (proposal.Length is not Stations)
         {
             throw new ArgumentException($"expected {Stations} proposals", nameof(proposal));
         }
@@ -102,7 +102,7 @@ public sealed record PlcSnapshot(
 {
     public static PlcSnapshot Decode(ReadOnlySpan<ushort> registers)
     {
-        if (registers.Length != RegisterMap.SnapshotValues * RegisterMap.RegistersPerValue)
+        if (registers.Length is not RegisterMap.SnapshotValues * RegisterMap.RegistersPerValue)
         {
             throw new ArgumentException("unexpected register count", nameof(registers));
         }
@@ -121,7 +121,7 @@ public sealed record PlcSnapshot(
         return new PlcSnapshot(
             RegisterMap.ReadInt64(registers, RegisterMap.SimTimeS),
             (ControlMode)RegisterMap.ReadInt64(registers, RegisterMap.CmdMode),
-            RegisterMap.ReadInt64(registers, RegisterMap.CenterOk) != 0,
+            RegisterMap.ReadInt64(registers, RegisterMap.CenterOk) is not 0,
             depths,
             RegisterMap.ReadInt64(registers, RegisterMap.StepReq),
             center,

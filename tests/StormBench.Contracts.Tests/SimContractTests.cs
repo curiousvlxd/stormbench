@@ -59,7 +59,7 @@ public partial class SimContractTests
         foreach (var state in new[]
                  {
                      ScenarioStates.Idle, ScenarioStates.Preparing, ScenarioStates.Running,
-                     ScenarioStates.Finished, ScenarioStates.Stopped, ScenarioStates.Failed,
+                     ScenarioStates.Finished, ScenarioStates.Stopped, ScenarioStates.Failed
                  })
         {
             Assert.Contains($" = \"{state}\"", source, StringComparison.Ordinal);

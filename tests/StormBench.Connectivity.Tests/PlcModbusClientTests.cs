@@ -57,7 +57,7 @@ public sealed class PlcModbusClientTests : IDisposable
         var raw = _server.GetHoldingRegisterBuffer(1);
         var first = RegisterMap.Address(RegisterMap.CenterSetpointFirst) * 2;
         var last = (RegisterMap.Address(RegisterMap.CenterStep) + RegisterMap.RegistersPerValue) * 2;
-        Assert.Contains(raw[first..last].ToArray(), b => b != 0);
+        Assert.Contains(raw[first..last].ToArray(), b => b is not 0);
         Assert.All(raw[..first].ToArray(), b => Assert.Equal(0, b));
         Assert.All(raw[last..(last + 64)].ToArray(), b => Assert.Equal(0, b));
     }

@@ -1,4 +1,4 @@
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Contracts.Tests;
 

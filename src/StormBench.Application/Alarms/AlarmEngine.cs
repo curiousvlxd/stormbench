@@ -64,7 +64,7 @@ public sealed class AlarmEngine(TimeProvider clock, IEnumerable<IAlarmObserver>?
 
     private void Notify(IReadOnlyList<AlarmTransition> transitions)
     {
-        if (transitions.Count == 0)
+        if (transitions.Count is 0)
         {
             return;
         }

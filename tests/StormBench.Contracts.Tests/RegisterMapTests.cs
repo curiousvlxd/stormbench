@@ -92,7 +92,7 @@ public partial class RegisterMapTests
         foreach (var (name, mode) in new[]
                  {
                      ("MODE_LOCAL", ControlMode.Local), ("MODE_EFD_PUBLISHED", ControlMode.EfdPublished),
-                     ("MODE_EFD_INTENDED", ControlMode.EfdIntended), ("MODE_EFD_CENTER", ControlMode.EfdCenter),
+                     ("MODE_EFD_INTENDED", ControlMode.EfdIntended), ("MODE_EFD_CENTER", ControlMode.EfdCenter)
                  })
         {
             var match = ConstantRegex(name).Match(st);
