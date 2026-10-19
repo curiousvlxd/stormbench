@@ -1,13 +1,13 @@
 # Modbus register map
 
-The simulator is the Modbus TCP client, the PLC (OpenPLC Runtime v4) is the server on port 502, unit id 1.
-All values are 64-bit and live in OpenPLC's `%ML` memory area:
+The simulator is the Modbus TCP client; the PLC (OpenPLC Runtime v4) is the server on port 502, unit id 1.
+All values are 64-bit, in OpenPLC's `%ML` memory area:
 
 - holding register address of `%MLn` = `4096 + 4 * n` (0-based Modbus addresses),
 - four registers per value, big-endian, **high word first**,
 - `LINT` for integers, `LREAL` (IEEE 754 double) for levels and setpoints.
 
-Doubles on the wire mean no scaling and no rounding: the PLC compares exactly the tank levels that SWMM computed. Source of truth: `plc/src/main.st` and `simulator/stormbench_sim/registers.py`; `simulator/tests/test_registers.py` checks that both agree.
+Doubles on the wire: no scaling, no rounding; the PLC compares exactly the tank levels SWMM computed. Source of truth: `plc/src/main.st` and `simulator/stormbench_sim/registers.py`; `simulator/tests/test_registers.py` checks that they agree.
 
 ## Simulator to PLC (one FC16 write per control step)
 
@@ -19,18 +19,18 @@ Doubles on the wire mean no scaling and no rounding: the PLC compares exactly th
 | `DepthT1` ... `DepthT6` | `%ML3` ... `%ML8` | 4108-4131 | LREAL | tank water depth, m |
 | `StepReq` | `%ML9` | 4132-4135 | LINT | lockstep request number |
 
-The block is written with a single request, `StepReq` last.
+The block is written in one request, `StepReq` last.
 
 ## Central optimiser to PLC (mode 3, one FC16 write per step)
 
-Written by the edge gateway when the central optimiser answers over the UNS (Phase 2), or by the simulator itself when it plays the center (`--center emulated`).
+Written by the edge gateway when the central optimiser answers over the UNS (Phase 2), or by the simulator when it plays the center (`--center emulated`).
 
 | Variable | IEC address | Holding registers | Type | Unit / values |
 |---|---|---|---|---|
 | `CenterSetpointV2` ... `CenterSetpointV6` | `%ML10` ... `%ML13` | 4136-4151 | LREAL | proposed relative openings for stations 1..4 |
 | `CenterStep` | `%ML14` | 4152-4155 | LINT | the `StepReq` this proposal belongs to |
 
-In mode 3 the PLC waits until `CenterStep = StepReq` before it evaluates the step, unless `CenterOk = 0` (link to the center lost: the stations run their Base Case settings at once). The stations accept a proposal only if every value lies in 0..1; otherwise they fall back and set status bit 3.
+In mode 3 the PLC evaluates the step only once `CenterStep = StepReq`, unless `CenterOk = 0` (center link lost: the stations run their Base Case settings at once). The stations accept a proposal only if every value lies in 0..1; otherwise they fall back and set status bit 3.
 
 ## PLC to simulator (one FC3 read per poll)
 
@@ -52,14 +52,14 @@ In mode 3 the PLC waits until `CenterStep = StepReq` before it evaluates the ste
 3. The PLC notices `StepReq <> StepAck`, evaluates the inputs once, writes the outputs and sets `StepAck := StepReq` in the same scan.
 4. The simulator polls the output block with FC3 until `StepAck = n` (timeout 10 s), applies the setpoints to the SWMM orifices and continues.
 
-At start the simulator reads the current `StepAck` and numbers its requests from there, so an acknowledgement left over from an earlier run can never match a new request.
+At start the simulator reads the current `StepAck` and numbers its requests from there, so a leftover acknowledgement from an earlier run never matches a new request.
 
 ## Why `StepReq` and `StepAck` are declared last
 
-OpenPLC v4 applies Modbus writes and commits program outputs through a journal. Inputs are copied in at the start of a scan; changed outputs are committed after the scan **one by one, in declaration order**, without holding the image lock, and a Modbus read that arrives in between sees only the outputs committed so far (see `core/src/plc_app/image_tables.cpp` and `journal_buffer.c` in openplc-runtime v4.2.4).
+OpenPLC v4 applies Modbus writes and commits program outputs through a journal. Inputs are copied in at the start of a scan. Changed outputs are committed after the scan **one by one, in declaration order**, without holding the image lock; a Modbus read in between sees only the outputs committed so far (`core/src/plc_app/image_tables.cpp` and `journal_buffer.c` in openplc-runtime v4.2.4).
 
-With `StepAck` declared first, 3 of 105,406 steps in a year-long run returned the new acknowledgement together with the previous step's setpoints. Declaring `StepAck` after every other output removed the effect: a read that sees the new acknowledgement has necessarily seen every output committed before it. The Modbus plugin writes the input block in ascending address order, so the same reasoning makes `StepReq` safe on the input side. `test_step_ack_is_the_last_located_variable` guards the declaration order.
+With `StepAck` declared first, 3 of 105,406 steps in a year-long run returned the new acknowledgement with the previous step's setpoints. With `StepAck` declared after every other output, a read that sees the new acknowledgement has seen every output committed before it. The Modbus plugin writes the input block in ascending address order, which makes `StepReq` safe on the input side for the same reason. `test_step_ack_is_the_last_located_variable` guards the declaration order.
 
 ## The same variables over OPC UA
 
-The PLC image also serves every located variable above read-only over OPC UA at `opc.tcp://<plc>:4840/openplc/opcua` (SecurityPolicy None, anonymous): node `ns=urn:stormbench:plc;s=PLC.main.<Name>`, LINT as Int64, LREAL as Double. Look the namespace index up at run time (it is 2 today). See ADR 0009.
+The PLC also serves every located variable above read-only over OPC UA at `opc.tcp://<plc>:4840/openplc/opcua` (SecurityPolicy None, anonymous): node `ns=urn:stormbench:plc;s=PLC.main.<Name>`, LINT as Int64, LREAL as Double. Resolve the namespace index at run time (currently 2). See ADR 0009.

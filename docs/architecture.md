@@ -1,6 +1,6 @@
 # Architecture
 
-Phase 1 below: the simulator and the PLC in lockstep. Phase 2 adds the unified namespace and the central optimiser, Phase 3 the operator HMI and the simulated field on the UNS.
+Phase 1: simulator and PLC in lockstep. Phase 2: unified namespace (UNS) and central optimiser. Phase 3: operator HMI and the simulated field on the UNS. Phase 4: a second center and the plugin point.
 
 ```mermaid
 flowchart LR
@@ -23,9 +23,9 @@ flowchart LR
     main -- "FC3: setpoints, status, StepAck" --> runner
 ```
 
-- **simulator** (`simulator/stormbench_sim`): prepares a runnable copy of the model, advances SWMM one control interval at a time, reads tank levels and cumulative overflow, asks a controller for setpoints and writes them to the orifices. Controllers: SWMM's own rules, the Python reference, or the PLC over Modbus TCP. With the PLC in the loop, every answer is also computed by the Python reference and compared.
-- **plc** (`plc/`): IEC 61131-3 Structured Text compiled into the OpenPLC Runtime v4 image at build time (ADR 0002). One coordinator block proposes Equal Filling Degree setpoints; four station blocks accept them only within limits and while coordination is healthy, otherwise they run the Base Case locally (ADR 0004).
-- **models** (`models/`): the Astlingen benchmark, downloaded from its original repository and verified by hash, never committed.
+- **simulator** (`simulator/stormbench_sim`): prepares a runnable copy of the model, advances SWMM one control interval at a time, reads tank levels and cumulative overflow, gets setpoints from a controller and writes them to the orifices. Controllers: SWMM's own rules, the Python reference, or the PLC over Modbus TCP. With the PLC in the loop, the Python reference recomputes every answer for comparison.
+- **plc** (`plc/`): IEC 61131-3 Structured Text compiled into the OpenPLC Runtime v4 image at build time (ADR 0002). One coordinator block proposes Equal Filling Degree (EFD) setpoints; four station blocks accept them only within limits and while coordination is healthy, otherwise they run the Base Case locally (ADR 0004).
+- **models** (`models/`): the Astlingen benchmark, downloaded from its original repository and verified by hash; never committed.
 
 ## One control step
 
@@ -45,7 +45,7 @@ sequenceDiagram
     R->>S: target_setting for V2, V3, V4, V6
 ```
 
-Model time only advances when the PLC has answered, so results do not depend on the speed of either side (ADR 0003, ADR 0006).
+Model time advances only after the PLC has answered, so results do not depend on the speed of either side (ADR 0003, ADR 0006).
 
 ## Phase 2: unified namespace and central optimiser
 
@@ -69,7 +69,14 @@ flowchart LR
     plc -- "setpoints, StepAck = n" --> sim
 ```
 
-One control step in mode 3: the simulator writes the levels and `StepReq = n`; the gateway sees the new step in its next read of the register image and publishes the changed metrics as DDATA; Scada updates its UNS state and, because the PLC is in mode 3 with the center link up, computes EFD from the levels of step n and sends a DCMD; the gateway writes the proposal and `CenterStep = n` in one Modbus request; the PLC's stations check the proposal, apply it and acknowledge the step; the simulator reads the setpoints and advances the model. See ADR 0007 and ADR 0008.
+One control step in mode 3 (ADR 0007, ADR 0008):
+
+1. The simulator writes the levels and `StepReq = n`.
+2. The gateway sees the new step in its next read of the register image and publishes the changed metrics as DDATA.
+3. Scada updates its UNS state and, with the PLC in mode 3 and the center link up, computes EFD from the levels of step n and sends a DCMD.
+4. The gateway writes the proposal and `CenterStep = n` in one Modbus request.
+5. The PLC stations check the proposal, apply it and acknowledge the step.
+6. The simulator reads the setpoints and advances the model.
 
 | Piece | Project | Role |
 |---|---|---|
@@ -77,7 +84,7 @@ One control step in mode 3: the simulator writes the levels and `StepReq = n`; t
 | Names and register map | `src/StormBench.Contracts` | UNS ids, metric names, Modbus map shared by gateway and Scada |
 | Edge gateway | `src/StormBench.Connectivity` | PLC to Sparkplug (reads over Modbus or OPC UA), DCMD to PLC over Modbus, DDEATH when the PLC is unreachable |
 | Scada | `src/StormBench.Scada` | modules `PrimaryHost` (UNS state) and `Optimization` (EFD), HTTP views `/api/uns`, `/api/optimization`; Phase 3 adds the modules and the HMI below |
-| Orchestration | `src/StormBench.AppHost`, `docker-compose.uns.yml` | Aspire with dashboard, or containers only |
+| Orchestration | `src/StormBench.AppHost`, `compose.uns.yaml` | Aspire with dashboard, or containers only |
 
 ## Phase 3: operator HMI and the simulated field
 
@@ -101,9 +108,9 @@ flowchart LR
     hmi -- "start, stop" --> scada -- "NCMD Sim01" --> broker --> sim
 ```
 
-The HMI never talks to the PLC or the simulator. It shows the application's views of the UNS, and the test console's commands travel as NCMD to `Sim01`, the way the center's proposals travel as DCMD to the PLC ([ADR 0010](adr/0010-operator-hmi-from-the-uns.md)).
+The HMI never talks to the PLC or the simulator. It shows the application's views of the UNS; test console commands travel as NCMD to `Sim01`, as the center's proposals travel as DCMD to the PLC ([ADR 0010](adr/0010-operator-hmi-from-the-uns.md)).
 
-Scada is split into layers; each depends only on the ones above it in this table.
+Scada layers; each depends only on the layers above it:
 
 | Layer | Project | Content |
 |---|---|---|
@@ -124,7 +131,7 @@ flowchart LR
     pg --> grafana
 ```
 
-Scada writes through bounded background queues; a store that is slow or down loses data, never a step ([ADR 0015](adr/0015-historian-and-run-store.md), [ADR 0016](adr/0016-observability.md)).
+Scada writes through bounded background queues: a slow or failed store loses data, never a step ([ADR 0015](adr/0015-historian-and-run-store.md), [ADR 0016](adr/0016-observability.md)).
 
 ## Phase 4: a second center and the plugin point
 
@@ -141,8 +148,12 @@ flowchart LR
     scada["Scada EFD"] -. "silent while the console runs<br/>an algorithm of another center" .- plc
 ```
 
-A center is anything that implements `runner.Center` (propose one setting per station, observe what the stations applied). The MPC (`stormbench_sim/mpc.py`) is one; `--center package.module:factory` loads others ([controllers.md](controllers.md)). Offline, `CenterController` puts a center behind the Python reference of the stations; with the PLC, `PlcController` writes its proposals into the center registers with the step. The console's catalog says per algorithm which center proposes (`center: scada` or `simulator`), and Scada's Optimization module answers only for its own (ADR 0017).
+A center is anything that implements `runner.Center`: propose one setting per station, observe what the stations applied (ADR 0017, [controllers.md](controllers.md)).
 
-## What attaches next
+- The MPC (`stormbench_sim/mpc.py`) is one; `--center package.module:factory` loads others.
+- Offline, `CenterController` puts a center behind the Python reference of the stations. With the PLC, `PlcController` writes its proposals into the center registers with the step.
+- The console catalog states per algorithm which center proposes (`center: scada` or `simulator`); Scada's Optimization module answers only for its own.
 
-Fault scenarios (Phase 4) use the inputs that already exist: `CenterOk`, plausibility checks, the status word, the edge node's DDEATH, and the simulator as the place where sensors can stick or gates fail.
+## Fault scenarios
+
+Faults use the existing inputs: `CenterOk`, plausibility checks, the status word, the edge node's DDEATH, and the simulator, where gates stick and sensors freeze. Center watchdog: ADR 0011. Field faults: ADR 0012.
