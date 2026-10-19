@@ -1,3 +1,5 @@
+using StormBench.Sparkplug.Payloads;
+
 namespace StormBench.Sparkplug.Tests;
 
 public class SparkplugCodecTests
@@ -12,7 +14,7 @@ public class SparkplugCodecTests
             SparkplugMetric.Double("Storage/T2/Level", 0.1 + 0.2),
             SparkplugMetric.Boolean("Node Control/Rebirth", true),
             SparkplugMetric.String("Properties/Name", "PLC01"),
-            new SparkplugMetric("Outlets/V2/Setpoint", SparkplugDataType.Double, null),
+            new SparkplugMetric("Outlets/V2/Setpoint", SparkplugDataType.Double, null)
         ]);
 
         var decoded = SparkplugCodec.Decode(SparkplugCodec.Encode(payload));

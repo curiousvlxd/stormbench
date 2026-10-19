@@ -1,7 +1,7 @@
 using Google.Protobuf;
 using Org.Eclipse.Tahu.Protobuf;
 
-namespace StormBench.Sparkplug;
+namespace StormBench.Sparkplug.Payloads;
 
 /// <summary>Encodes and decodes Sparkplug B payloads with the official protobuf schema.</summary>
 public static class SparkplugCodec
@@ -20,7 +20,7 @@ public static class SparkplugCodec
             {
                 Name = metric.Name,
                 Datatype = (uint)metric.DataType,
-                Timestamp = metric.Timestamp ?? payload.Timestamp,
+                Timestamp = metric.Timestamp ?? payload.Timestamp
             };
             switch (metric.Value)
             {
@@ -69,7 +69,7 @@ public static class SparkplugCodec
                     Payload.Types.Metric.ValueOneofCase.StringValue => metric.StringValue,
                     Payload.Types.Metric.ValueOneofCase.IntValue => (long)metric.IntValue,
                     Payload.Types.Metric.ValueOneofCase.FloatValue => (double)metric.FloatValue,
-                    _ => null,
+                    _ => null
                 };
             metrics.Add(new SparkplugMetric(metric.Name, type, value, metric.HasTimestamp ? metric.Timestamp : null));
         }

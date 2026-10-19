@@ -3,6 +3,10 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging.Abstractions;
 using MQTTnet;
 using MQTTnet.Formatter;
+using StormBench.Sparkplug.EdgeNode;
+using StormBench.Sparkplug.HostApplication;
+using StormBench.Sparkplug.Payloads;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Sparkplug.Tests;
 
@@ -42,8 +46,12 @@ public sealed class SparkplugSessionTests(MosquittoFixture broker) : IClassFixtu
     private SparkplugEdgeNode Edge(string? primaryHost) => new(
         new EdgeNodeOptions
         {
-            Host = broker.Host, Port = broker.Port, GroupId = _group, EdgeNodeId = "Edge01",
-            PrimaryHostId = primaryHost, ReconnectDelay = TimeSpan.FromMilliseconds(200),
+            Host = broker.Host,
+            Port = broker.Port,
+            GroupId = _group,
+            EdgeNodeId = "Edge01",
+            PrimaryHostId = primaryHost,
+            ReconnectDelay = TimeSpan.FromMilliseconds(200)
         },
         TimeProvider.System,
         NullLogger<SparkplugEdgeNode>.Instance);
@@ -51,8 +59,11 @@ public sealed class SparkplugSessionTests(MosquittoFixture broker) : IClassFixtu
     private SparkplugHostApplication Host(string hostId) => new(
         new HostApplicationOptions
         {
-            Host = broker.Host, Port = broker.Port, HostId = hostId, GroupId = _group,
-            ReconnectDelay = TimeSpan.FromMilliseconds(200),
+            Host = broker.Host,
+            Port = broker.Port,
+            HostId = hostId,
+            GroupId = _group,
+            ReconnectDelay = TimeSpan.FromMilliseconds(200)
         },
         TimeProvider.System,
         NullLogger<SparkplugHostApplication>.Instance);
@@ -84,7 +95,7 @@ public sealed class SparkplugSessionTests(MosquittoFixture broker) : IClassFixtu
         _ = edge.RunAsync(_stop.Token);
 
         await Task.Delay(700);
-        Assert.DoesNotContain(_seen, m => m.Topic.MessageType == MessageTypes.NBirth);
+        Assert.DoesNotContain(_seen, m => m.Topic.MessageType is MessageTypes.NBirth);
 
         await using var host = Host(hostId);
         _ = host.RunAsync(_stop.Token);
