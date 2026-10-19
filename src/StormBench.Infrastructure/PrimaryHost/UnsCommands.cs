@@ -3,7 +3,8 @@ using StormBench.Application.Scenarios;
 using StormBench.Contracts;
 using StormBench.Domain.Network;
 using StormBench.Domain.Scenarios;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.HostApplication;
+using StormBench.Sparkplug.Payloads;
 
 namespace StormBench.Infrastructure.PrimaryHost;
 
@@ -16,7 +17,7 @@ public sealed class UnsSimulatorCommands(SparkplugHostApplication host) : ISimul
                 SparkplugMetric.String(SimMetrics.Storm, storm.Value),
                 SparkplugMetric.String(SimMetrics.Algorithm, algorithm.Value),
                 SparkplugMetric.Double(SimMetrics.Pace, paceSeconds),
-                SparkplugMetric.Boolean(SimMetrics.Start, true),
+                SparkplugMetric.Boolean(SimMetrics.Start, true)
             ],
             cancellationToken);
 
@@ -48,7 +49,7 @@ public sealed class UnsPlcCommands(SparkplugHostApplication host) : IPlcCommands
             Uns.PlcDeviceId,
             [
                 .. proposal.Select(p => SparkplugMetric.Double(PlcMetrics.CenterSetpoint(p.Gate.Value), p.Setpoint.Fraction)),
-                SparkplugMetric.Int64(PlcMetrics.CenterStep, lockstep),
+                SparkplugMetric.Int64(PlcMetrics.CenterStep, lockstep)
             ],
             cancellationToken);
     }

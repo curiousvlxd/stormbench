@@ -30,14 +30,6 @@ public interface ISampleSink
     void Write(IReadOnlyList<Sample> samples);
 }
 
-/// <summary>No VictoriaMetrics configured: samples are not kept.</summary>
-public sealed class NoSampleSink : ISampleSink
-{
-    public void Write(IReadOnlyList<Sample> samples)
-    {
-    }
-}
-
 /// <summary>
 /// The steps of a run as Prometheus samples: one series per value, named once per run with the
 /// run's labels, every sample at the simulated time of its step.

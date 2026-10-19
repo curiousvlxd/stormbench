@@ -1,5 +1,6 @@
 using StormBench.Contracts;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.Payloads;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Infrastructure.PrimaryHost;
 
@@ -56,31 +57,31 @@ public sealed class UnsState(TimeProvider clock)
             switch (topic.MessageType)
             {
                 case MessageTypes.NBirth:
-                {
-                    var node = new NodeEntry { Online = true, Seq = payload.Seq };
-                    if (payload.Find(PlcMetrics.BdSeq)?.Value is { } bdSeq)
                     {
-                        node.BdSeq = Convert.ToUInt64(bdSeq, System.Globalization.CultureInfo.InvariantCulture);
+                        var node = new NodeEntry { Online = true, Seq = payload.Seq };
+                        if (payload.Find(PlcMetrics.BdSeq)?.Value is { } bdSeq)
+                        {
+                            node.BdSeq = Convert.ToUInt64(bdSeq, System.Globalization.CultureInfo.InvariantCulture);
+                        }
+                        Store(node.Metrics, payload, now);
+                        _nodes[key] = node;
+                        return HostAction.None;
                     }
-                    Store(node.Metrics, payload, now);
-                    _nodes[key] = node;
-                    return HostAction.None;
-                }
                 case MessageTypes.NDeath:
-                {
-                    if (!_nodes.TryGetValue(key, out var node))
                     {
+                        if (!_nodes.TryGetValue(key, out var node))
+                        {
+                            return HostAction.None;
+                        }
+                        var bdSeq = payload.Find(PlcMetrics.BdSeq)?.Value;
+                        if (bdSeq is not null && node.BdSeq is not null
+                            && Convert.ToUInt64(bdSeq, System.Globalization.CultureInfo.InvariantCulture) != node.BdSeq)
+                        {
+                            return HostAction.None;
+                        }
+                        node.MarkOffline(now);
                         return HostAction.None;
                     }
-                    var bdSeq = payload.Find(PlcMetrics.BdSeq)?.Value;
-                    if (bdSeq is not null && node.BdSeq is not null
-                        && Convert.ToUInt64(bdSeq, System.Globalization.CultureInfo.InvariantCulture) != node.BdSeq)
-                    {
-                        return HostAction.None;
-                    }
-                    node.MarkOffline(now);
-                    return HostAction.None;
-                }
             }
 
             if (!_nodes.TryGetValue(key, out var current) || !current.Online)
@@ -100,12 +101,12 @@ public sealed class UnsState(TimeProvider clock)
                     Store(current.Metrics, payload, now);
                     break;
                 case MessageTypes.DBirth when topic.DeviceId is not null:
-                {
-                    var device = new DeviceEntry { Online = true };
-                    Store(device.Metrics, payload, now);
-                    current.Devices[topic.DeviceId] = device;
-                    break;
-                }
+                    {
+                        var device = new DeviceEntry { Online = true };
+                        Store(device.Metrics, payload, now);
+                        current.Devices[topic.DeviceId] = device;
+                        break;
+                    }
                 case MessageTypes.DData when topic.DeviceId is not null:
                     if (!current.Devices.TryGetValue(topic.DeviceId, out var target) || !target.Online)
                     {

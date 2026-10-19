@@ -67,7 +67,7 @@ public static class PrometheusText
                 '\\' => text.Append(@"\\"),
                 '"' => text.Append("\\\""),
                 '\n' => text.Append(@"\n"),
-                _ => text.Append(c),
+                _ => text.Append(c)
             };
         }
     }

@@ -1,5 +1,5 @@
 using StormBench.Application.Site;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.HostApplication;
 
 namespace StormBench.Infrastructure.PrimaryHost;
 

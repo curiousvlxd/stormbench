@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using StormBench.Application.Alarms;
 using StormBench.Application.Historian;
@@ -7,11 +7,10 @@ using StormBench.Application.Optimization;
 using StormBench.Application.Runs;
 using StormBench.Application.Scenarios;
 using StormBench.Application.Site;
-using StormBench.Contracts;
 using StormBench.Infrastructure.Postgres;
 using StormBench.Infrastructure.PrimaryHost;
 using StormBench.Infrastructure.VictoriaMetrics;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.HostApplication;
 
 namespace StormBench.Infrastructure;
 
@@ -25,42 +24,32 @@ public static class InfrastructureServices
         /// when <c>ConnectionStrings:runs</c> is. The UNS host worker is registered last, so the
         /// background writers start before it and flush after it has stopped.
         /// </summary>
-        public IServiceCollection AddStormBenchInfrastructure(IConfiguration configuration)
-        {
-            ArgumentNullException.ThrowIfNull(configuration);
-            return services
-                .AddHistorian(configuration)
-                .AddRunStore(configuration)
-                .AddPrimaryHost(configuration);
-        }
+        public IServiceCollection AddStormBenchInfrastructure() =>
+            services
+                .AddHistorian()
+                .AddRunStore()
+                .AddPrimaryHost();
 
-        private IServiceCollection AddHistorian(IConfiguration configuration)
+        private IServiceCollection AddHistorian()
         {
-            services.AddSingleton<IRunSeriesWriter, PrometheusRunSeries>();
-            var section = configuration.GetSection(VictoriaMetricsOptions.Section);
-            if (section.Get<VictoriaMetricsOptions>() is not { Enabled: true })
-            {
-                return services.AddSingleton<ISampleSink, NoSampleSink>();
-            }
-            services.Configure<VictoriaMetricsOptions>(section);
             services.AddHttpClient(VictoriaMetricsWriter.HttpClientName);
             return services
+                .ConfigureOptions<VictoriaMetricsOptionsSetup>()
+                .AddSingleton<IRunSeriesWriter, PrometheusRunSeries>()
                 .AddSingleton<VictoriaMetricsWriter>()
                 .AddSingleton<ISampleSink>(sp => sp.GetRequiredService<VictoriaMetricsWriter>())
                 .AddHostedService(sp => sp.GetRequiredService<VictoriaMetricsWriter>().Writer);
         }
 
-        private IServiceCollection AddRunStore(IConfiguration configuration)
+        /// <summary>
+        /// The run store from <see cref="RunStoreOptions"/>; without a connection string it keeps
+        /// nothing. Its health check reports a store that does not answer as degraded.
+        /// </summary>
+        private IServiceCollection AddRunStore()
         {
-            if (configuration.GetConnectionString(ScadaDatabase.ConnectionName) is not { } connectionString
-                || string.IsNullOrWhiteSpace(connectionString))
-            {
-                return services
-                    .AddSingleton<IRunStore, NoRunStore>()
-                    .AddSingleton<IAlarmJournalStore, NoAlarmJournalStore>();
-            }
-            services.AddNpgsqlDataSource(connectionString);
+            services.AddHealthChecks().AddCheck<RunStoreHealthCheck>(ScadaDatabase.ConnectionName, HealthStatus.Degraded);
             return services
+                .ConfigureOptions<RunStoreOptionsSetup>()
                 .AddSingleton<ScadaDatabase>()
                 .AddHostedService<ScadaDatabaseStartup>()
                 .AddSingleton<PostgresRunStore>()
@@ -72,15 +61,10 @@ public static class InfrastructureServices
         }
 
         /// <summary>The Sparkplug Primary Host session on the broker from <c>Mqtt</c>, the UNS state it keeps and its worker.</summary>
-        private IServiceCollection AddPrimaryHost(IConfiguration configuration)
+        private IServiceCollection AddPrimaryHost()
         {
-            services.Configure<HostApplicationOptions>(configuration.GetSection("Mqtt"));
-            services.PostConfigure<HostApplicationOptions>(o =>
-            {
-                o.HostId = string.IsNullOrEmpty(o.HostId) ? Uns.PrimaryHostId : o.HostId;
-                o.GroupId = string.IsNullOrEmpty(o.GroupId) ? Uns.GroupId : o.GroupId;
-            });
             return services
+                .ConfigureOptions<HostApplicationOptionsSetup>()
                 .AddSingleton(sp => sp.GetRequiredService<IOptions<HostApplicationOptions>>().Value)
                 .AddSingleton<SparkplugHostApplication>()
                 .AddSingleton<IBrokerConnection, PrimaryHostConnection>()

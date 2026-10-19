@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using StormBench.Application.Alarms;
@@ -6,26 +7,32 @@ using StormBench.Domain.Runs;
 
 namespace StormBench.Infrastructure.Postgres;
 
-/// <summary>The alarm journal in the table <c>alarm_journal</c>, append only, written in the background.</summary>
+/// <summary>
+/// The alarm journal in the table <c>alarm_journal</c>, append only, written in the background: a
+/// batch is one statement over arrays of its columns. Without a store nothing is queued.
+/// </summary>
 public sealed class PostgresAlarmJournal : IAlarmJournalStore
 {
     private const string Insert = """
         INSERT INTO alarm_journal (run_id, alarm_id, source, message, priority, from_state, to_state, wall_time, sim_time)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        SELECT * FROM unnest(
+            @RunId::text[], @AlarmId::text[], @Source::text[], @Message::text[], @Priority::smallint[],
+            @FromState::text[], @ToState::text[], @WallTime::timestamptz[], @SimTime::timestamp[])
         """;
 
-    private const string SelectRun = """
-        SELECT * FROM (
-            SELECT id, run_id, alarm_id, source, message, priority, from_state, to_state, wall_time, sim_time
-            FROM alarm_journal WHERE run_id = $1 ORDER BY id DESC LIMIT $2) newest
-        ORDER BY id
+    private const string Columns = """
+        id AS Id, run_id AS RunId, alarm_id AS AlarmId, source AS Source, message AS Message, priority AS Priority,
+        from_state AS FromState, to_state AS ToState, wall_time AS WallTime, sim_time AS SimTime
         """;
 
-    private const string SelectAll = """
-        SELECT * FROM (
-            SELECT id, run_id, alarm_id, source, message, priority, from_state, to_state, wall_time, sim_time
-            FROM alarm_journal ORDER BY id DESC LIMIT $1) newest
-        ORDER BY id
+    private const string SelectRun = $"""
+        SELECT * FROM (SELECT {Columns} FROM alarm_journal WHERE run_id = @Run ORDER BY id DESC LIMIT @Limit) newest
+        ORDER BY Id
+        """;
+
+    private const string SelectAll = $"""
+        SELECT * FROM (SELECT {Columns} FROM alarm_journal ORDER BY id DESC LIMIT @Limit) newest
+        ORDER BY Id
         """;
 
     private readonly ScadaDatabase _database;
@@ -39,36 +46,22 @@ public sealed class PostgresAlarmJournal : IAlarmJournalStore
     /// <summary>Hosted service that writes the queued entries.</summary>
     public BatchWriter<JournalEntry> Writer { get; }
 
-    public void Append(JournalEntry entry) => Writer.Enqueue(entry);
+    public void Append(JournalEntry entry)
+    {
+        if (_database.Enabled)
+        {
+            Writer.Enqueue(entry);
+        }
+    }
 
     public async Task<IReadOnlyList<JournalEntry>> ReadAsync(RunId? run, int limit, CancellationToken cancellationToken)
     {
         try
         {
-            await _database.EnsureSchemaAsync(cancellationToken);
-            await using var command = _database.DataSource.CreateCommand(run is null ? SelectAll : SelectRun);
-            if (run is { } id)
-            {
-                command.Parameters.Add(Sql.Text(id.Value));
-            }
-            command.Parameters.Add(Sql.Int64(limit));
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            List<JournalEntry> entries = [];
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                entries.Add(new JournalEntry(
-                    reader.GetInt64(0),
-                    Sql.TextOrNull(reader, 1) is { } runId ? new RunId(runId) : null,
-                    reader.GetString(2),
-                    reader.GetString(3),
-                    reader.GetString(4),
-                    (AlarmPriority)reader.GetInt16(5),
-                    Enum.Parse<AlarmState>(reader.GetString(6)),
-                    Enum.Parse<AlarmState>(reader.GetString(7)),
-                    reader.GetFieldValue<DateTimeOffset>(8),
-                    Sql.ValueOrNull<DateTime>(reader, 9)));
-            }
-            return entries;
+            await using var connection = await _database.OpenAsync(cancellationToken);
+            var query = new CommandDefinition(run is null ? SelectAll : SelectRun, new { Run = run?.Value, Limit = (long)limit }, cancellationToken: cancellationToken);
+            var rows = await connection.QueryAsync<EntryRow>(query);
+            return [.. rows.Select(r => r.ToEntry())];
         }
         catch (NpgsqlException ex)
         {
@@ -78,22 +71,38 @@ public sealed class PostgresAlarmJournal : IAlarmJournalStore
 
     private async Task WriteAsync(IReadOnlyList<JournalEntry> entries, CancellationToken cancellationToken)
     {
-        await _database.EnsureSchemaAsync(cancellationToken);
-        await using var batch = _database.DataSource.CreateBatch();
-        foreach (var e in entries)
+        var columns = new
         {
-            var command = new NpgsqlBatchCommand(Insert);
-            command.Parameters.Add(Sql.Text(e.Run?.Value));
-            command.Parameters.Add(Sql.Text(e.AlarmId));
-            command.Parameters.Add(Sql.Text(e.Source));
-            command.Parameters.Add(Sql.Text(e.Message));
-            command.Parameters.Add(Sql.Int16((short)e.Priority));
-            command.Parameters.Add(Sql.Text(e.From.ToString()));
-            command.Parameters.Add(Sql.Text(e.To.ToString()));
-            command.Parameters.Add(Sql.WallTime(e.WallTime));
-            command.Parameters.Add(Sql.ModelTime(e.SimTime));
-            batch.BatchCommands.Add(command);
-        }
-        await batch.ExecuteNonQueryAsync(cancellationToken);
+            RunId = entries.Select(e => e.Run?.Value).ToArray(),
+            AlarmId = entries.Select(e => e.AlarmId).ToArray(),
+            Source = entries.Select(e => e.Source).ToArray(),
+            Message = entries.Select(e => e.Message).ToArray(),
+            Priority = entries.Select(e => (short)e.Priority).ToArray(),
+            FromState = entries.Select(e => e.From.ToString()).ToArray(),
+            ToState = entries.Select(e => e.To.ToString()).ToArray(),
+            WallTime = entries.Select(e => Sql.WallTime(e.WallTime)).ToArray(),
+            SimTime = entries.Select(e => Sql.ModelTime(e.SimTime)).ToArray(),
+        };
+        await using var connection = await _database.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(Insert, columns, cancellationToken: cancellationToken));
+    }
+
+    /// <summary>A row of <c>alarm_journal</c> as PostgreSQL returns it.</summary>
+    private sealed class EntryRow
+    {
+        public long Id { get; init; }
+        public string? RunId { get; init; }
+        public string AlarmId { get; init; } = "";
+        public string Source { get; init; } = "";
+        public string Message { get; init; } = "";
+        public short Priority { get; init; }
+        public string FromState { get; init; } = "";
+        public string ToState { get; init; } = "";
+        public DateTime WallTime { get; init; }
+        public DateTime? SimTime { get; init; }
+
+        public JournalEntry ToEntry() => new(
+            Id, RunId is { } run ? new RunId(run) : null, AlarmId, Source, Message, (AlarmPriority)Priority,
+            Enum.Parse<AlarmState>(FromState), Enum.Parse<AlarmState>(ToState), Sql.FromWallTime(WallTime), SimTime);
     }
 }

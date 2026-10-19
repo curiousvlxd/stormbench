@@ -18,7 +18,7 @@ public static class RunStateText
         RunState.Stopped => Stopped,
         RunState.Failed => Failed,
         RunState.Interrupted => Interrupted,
-        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
     };
 
     public static RunState Parse(string state) => state switch
@@ -28,6 +28,6 @@ public static class RunStateText
         Stopped => RunState.Stopped,
         Failed => RunState.Failed,
         Interrupted => RunState.Interrupted,
-        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null),
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, null)
     };
 }

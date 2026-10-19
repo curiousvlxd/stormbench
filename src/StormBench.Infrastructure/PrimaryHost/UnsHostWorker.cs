@@ -3,7 +3,9 @@ using Microsoft.Extensions.Logging;
 using StormBench.Application.Optimization;
 using StormBench.Application.Site;
 using StormBench.Contracts;
-using StormBench.Sparkplug;
+using StormBench.Sparkplug.HostApplication;
+using StormBench.Sparkplug.Payloads;
+using StormBench.Sparkplug.Topics;
 
 namespace StormBench.Infrastructure.PrimaryHost;
 

@@ -18,7 +18,7 @@ public static class ScenarioStateWire
         ScenarioStates.Finished => ScenarioState.Finished,
         ScenarioStates.Stopped => ScenarioState.Stopped,
         ScenarioStates.Failed => ScenarioState.Failed,
-        _ => ScenarioState.Idle,
+        _ => ScenarioState.Idle
     };
 }
 
@@ -40,7 +40,7 @@ public static class NetworkDescriptionMapping
                 [.. description.OverflowPoints.Select(p => new OverflowPoint(new OverflowPointId(p), tankSet.Contains(p) ? new TankId(p) : null))],
                 [
                     .. description.Stations.Select(s => new Station(
-                        new GateId(s.Valve), new TankId(s.Tank), new GateOpening(s.BaseSetting), new GateOpening(s.LowSetting))),
+                        new GateId(s.Valve), new TankId(s.Tank), new GateOpening(s.BaseSetting), new GateOpening(s.LowSetting)))
                 ],
                 [.. description.Nodes.Select(n => new NetworkNode(n.Id, NodeKindOf(n.Kind), n.X, n.Y))],
                 [.. description.Links.Select(l => new NetworkLink(l.Id, LinkKindOf(l.Kind), l.From, l.To))]);
@@ -52,7 +52,7 @@ public static class NetworkDescriptionMapping
         "junction" => NodeKind.Junction,
         "storage" => NodeKind.Storage,
         "outfall" => NodeKind.Outfall,
-        _ => NodeKind.Other,
+        _ => NodeKind.Other
     };
 
     private static LinkKind LinkKindOf(string kind) => kind switch
@@ -62,7 +62,7 @@ public static class NetworkDescriptionMapping
         "weir" => LinkKind.Weir,
         "pump" => LinkKind.Pump,
         "outlet" => LinkKind.Outlet,
-        _ => LinkKind.Other,
+        _ => LinkKind.Other
     };
 }
 
@@ -85,6 +85,6 @@ public static class ScenarioCatalogMapping
     {
         null => null,
         Centers.Scada => ControlCenter.Scada,
-        _ => ControlCenter.Simulator,
+        _ => ControlCenter.Simulator
     };
 }

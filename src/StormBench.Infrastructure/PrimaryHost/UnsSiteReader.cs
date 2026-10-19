@@ -162,7 +162,7 @@ public sealed class UnsSiteReader(UnsState uns, IBrokerConnection broker) : ISit
         if (uns.TryGetNode(Uns.GroupId, Uns.EdgeNodeId, out var edgeNode))
         {
             edge = edgeNode.Online ? Presence.Online : Presence.Offline;
-            if (edgeNode.Devices.FirstOrDefault(d => d.DeviceId == Uns.PlcDeviceId) is { } device)
+            if (edgeNode.Devices.FirstOrDefault(d => d.DeviceId is Uns.PlcDeviceId) is { } device)
             {
                 plc = device.Online && edgeNode.Online ? Presence.Online : Presence.Offline;
                 plcMetrics = new MetricBag(device.Metrics);
