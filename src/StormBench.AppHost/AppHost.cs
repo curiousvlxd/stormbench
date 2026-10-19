@@ -101,6 +101,7 @@ var connectivity = builder.AddProject<Projects.StormBench_Connectivity>("connect
 
 builder.AddPythonModule("simulator", Path.Combine(repo, "simulator"), "stormbench_sim")
     .WithUv()
+    .WithEnvironment("VictoriaLogs__Url", victoriaLogs.GetEndpoint("http"))
     .WithArgs(
         "--model-dir", Path.Combine(repo, "models", "astlingen"),
         "--results-dir", Path.Combine(repo, "results"),

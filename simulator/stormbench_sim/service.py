@@ -17,6 +17,7 @@ from .network import Controls, Network, load_network, read_kinds, read_layout, r
 from .pipeline import execute
 from .runner import FieldFaults, RunResult, RunSpec, StepRecord, run
 from .sparkplug import DataType, EdgeNode, Metric, Payload, Value
+from .telemetry import export_logs
 from .uns_contract import ScenarioState
 
 log = logging.getLogger(__name__)
@@ -520,6 +521,7 @@ class ScenarioService:
 
 def run_service(args: argparse.Namespace) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    export_logs()
     net = load_network(args.network, Path(args.model_dir))
     node = EdgeNode(
         args.mqtt_host,
